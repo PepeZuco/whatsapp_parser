@@ -47,7 +47,7 @@ browser                                   Flask (app.py)
 landing: drop .txt/.zip ──POST /api/parse──▶ parse.py
                                              ├─ unzip (if .zip) → _chat.txt
                                              ├─ detect platform (iOS / Android)
-                                             ├─ whatstk → rows
+                                             ├─ regex line parser → rows (stdlib only)
                                              ├─ classify type, strip system msgs
                                              └─ JSON  (nothing persisted)
 state = parsed JSON  ◀────────────────────── 
@@ -57,14 +57,17 @@ state = parsed JSON  ◀──────────────────�
   ├─ static/people.js    per-person profile, reply times, convo starters, first/last
   ├─ static/words.js     tokenizer, stopwords, word cloud counts, word counter, emojis, links
   ├─ static/wrapped.js   Wrapped card model + PNG render (canvas)
+  ├─ static/export.js    CSV / XLSX of the filtered rows
+  ├─ static/app.js       shell: state, upload, tabs, date bar, theme, language, hash
+  ├─ static/view-*.js    one render module per tab
   ├─ static/i18n.js      EN/PT strings, auto-detect
-  └─ templates/index.html  layout, CSS, rendering, event wiring
+  └─ templates/index.html  markup skeleton + CSS
 ```
 
 Every `static/*.js` model module is made of pure functions over the row array.
 Each is loaded as a plain script in the browser and `require`d by node tests,
 using the same UMD-ish pattern as vinyl's `activity.js` / `grouping.js`.
-Rendering lives in `index.html`.
+Rendering lives in one `static/view-<tab>.js` module per tab, which registers with `App` in `static/app.js`. `index.html` holds only the markup skeleton and the CSS. A focused file per tab beats vinyl's single 11k-line page.
 
 ### Files
 
@@ -72,10 +75,10 @@ Rendering lives in `index.html`.
 |---|---|
 | `app.py` | Flask app: `GET /`, `POST /api/parse`, `GET /healthz`. |
 | `parse.py` | Pure parsing: bytes → dict. No Flask imports. Replaces `whatsapp_parser/whats_app_parser.py` and `utils.py`. |
-| `templates/index.html` | Whole UI. |
+| `templates/index.html` | Markup skeleton + CSS (tokens copied from vinyl). |
 | `static/*.js` | Model modules listed above. |
 | `static/chat-icon.svg` / `.png` | Favicon. |
-| `requirements.txt` | `flask`, `gunicorn`, `whatstk` (+ its deps only). |
+| `requirements.txt` | `flask`, `gunicorn` only. The parser is stdlib, which replaced whatstk and the ~150 MB it pulled in (pandas, numpy, plotly, seaborn, matplotlib). |
 | `requirements-dev.txt` | `-r requirements.txt`, `pytest`. |
 | `Procfile`, `railway.toml`, `Dockerfile` | Deploy (gunicorn). Same shape as vinyl. |
 | `tests/` | pytest suite, plus `test_*.js` run through pytest wrappers (vinyl's pattern). |
@@ -93,7 +96,7 @@ Add `.superpowers/`.
 
 - Request: `multipart/form-data`, field `file`, either a `.txt` or a `.zip` (iPhone exports are zips containing `_chat.txt`; take the first `.txt` inside).
 - Limit: `MAX_UPLOAD_MB` env var, default 50. An oversized upload returns 413.
-- The upload is read into memory (`BytesIO`); zips are opened with `zipfile` in memory. `whatstk.df_from_txt_whatsapp` takes a file path, so the decoded text is written to a `tempfile.NamedTemporaryFile(delete=True)` inside a `with` block and parsed from there. The file is removed even if an exception is raised. This is the only file the app ever writes, and it exists only for the length of the request.
+- The upload is read into memory; zips are opened with `zipfile` over a `BytesIO`. Parsing works on the decoded string. The app writes no files at all.
 - No request body or message text is ever logged. Errors are logged by class name only.
 - Response 200:
 
@@ -121,11 +124,18 @@ Add `.superpowers/`.
 
 ## Parsing rules (`parse.py`)
 
-1. Decode as UTF-8 (falling back to `utf-8-sig`), and strip `‎`, ` ` and `​`.
+1. Decode as `utf-8-sig` (which drops a BOM), replacing undecodable bytes. Turn U+202F and U+00A0 (they sit before AM/PM) into spaces, and drop U+200F, U+200B and U+FEFF. Keep U+200E (LRM) while parsing, because the iOS system rule reads it, then strip it from kept text.
 2. Platform: a first non-empty line starting with `[` means iOS; otherwise Android.
-3. Build rows with whatstk. Pass date formats through explicitly when auto-detection fails. Both the iOS `dd/mm/yyyy, HH:MM:SS` and Android `dd/mm/yyyy HH:MM` families must parse. If whatstk fails, return `unparseable`.
-4. System messages are dropped: encryption notice, "created group", "added you", "changed the subject", "left", "joined using this group's invite link", "changed this group's icon", and "security code changed", in PT and EN. Keep the list as a table in `parse.py`.
-5. Group title: in iOS groups the first (system) line's sender is the group name. Capture it before dropping that line. Android gives `null`.
+3. Build rows with a stdlib regex parser. A line that starts a message matches one of:
+   - iOS: `[D/M/Y, H:MM(:SS)?( AM| PM)?] Sender: text`
+   - Android: `D/M/Y(,)? H:MM( AM| PM)? - Sender: text`
+   
+   D, M and Y are 1–4 digits and the separator may be `/`, `.` or `-`. Lines that don't match are continuations and are appended to the previous message with `\n`. A header with no `Sender:` part is a system line and is dropped. Day/month order is decided once per file: if any first field is > 12, it's day-first; if any second field is > 12, it's month-first; otherwise day-first (the PT default). A 2-digit year means 2000 + Y. If no line matches, the error is `unparseable`.
+4. System messages are dropped by structure, not by a phrase list, so this works in any language:
+   - Android: a header with no `Sender:` part is a system line.
+   - iOS: a message whose text starts with U+200E (LRM) is a system line, unless it is a media or deleted marker (those carry an LRM too).
+   - As a fallback, a first line containing the encryption notice ("end-to-end encrypted" / "criptografia de ponta a ponta") is a system line.
+5. Group title (iOS): if the first line's sender ends up with zero kept messages, because all of their lines were system lines, that sender is the group name. Otherwise, and always on Android, the title is `null`.
 6. Type classification, a table-driven map in PT and EN:
    - iOS: `audio omitted/áudio ocultado`, `image omitted/imagem ocultada`, `sticker omitted/figurinha omitida`, `video omitted/vídeo omitido`, `GIF omitted/GIF omitido`, `document omitted/documento omitido` (also when prefixed by a filename)
    - Android: `<Media omitted>/<Mídia oculta>` → `m`
@@ -176,7 +186,7 @@ Everything below uses the filtered range: word cloud, word counter and export in
 
 One card per person (grid, sortable by messages, fastest reply, longest messages, or night owl):
 
-- Share %, and a one-line role derived from the person's extremes. Examples: "Night owl" when after-midnight % is highest; "Fastest replier"; "Starts most conversations"; "Says good night" when they send the most last-messages. Show at most 2 roles, only for groups of 2–12.
+- Share %, and a one-line role derived from the person's extremes. Examples: "Night owl" when after-midnight % is highest and at least 2%; "Fastest replier"; "Starts most conversations"; "Says good night" when they send the most last-messages. Show at most 2 roles, only for groups of 2–12.
 - Stats: messages, words/msg, median reply time (only replies sent < 12 h after a message from someone else), starts convos %, after midnight % (00:00–04:59), media sent.
 - Top 5 emojis (Unicode extended-pictographic regex, ZWJ sequences kept whole).
 - Signature words: top 5 by count × (their rate / everyone's rate), which puts distinctive words above merely common ones.
@@ -185,7 +195,7 @@ One card per person (grid, sortable by messages, fastest reply, longest messages
 
 ### Messages
 
-- A virtualised chat-bubble list (render only the visible window, to handle 100k+ rows) with sticky day separators. The first person listed is drawn on the "me" side; a setting swaps sides. Groups show sender names in their person colour.
+- A virtualised chat-bubble list (render only the visible window, to handle 100k+ rows) with sticky day separators. A "Right side: <person>" selector (default: the first person) picks whose bubbles sit on the right, which works for pairs and groups alike. Groups show sender names in their person colour.
 - Toolbar: search (with highlight, hit count, and ↑/↓ to step through hits), person filter, and type filter.
 - Entry points from other tabs (calendar day, busiest day, heatmap cell, word, person card) set filters and scroll to the target.
 - **Word counter** (side panel; the existing feature, improved): the search term, **Whole words only** (default on, Unicode-aware word boundaries) and **Match case** (default off); per-person bars and a total; a per-month sparkline.
@@ -197,7 +207,8 @@ One card per person (grid, sortable by messages, fastest reply, longest messages
 - Period: one button per year in the chat, plus All time. The card ignores the date bar and uses its own period, which is explained in a note.
 - Content: message total, longest streak, busiest day, peak hour, top emoji, fastest replier, top word (**hidden by default**, opt-in), and a per-person split bar. Groups show the top 3 people and "+N".
 - Privacy toggles: hide names ("You"/"Them", or "Person 1…N" in groups) and hide top word.
-- **Download PNG:** drawn to a `<canvas>` at 3× (1080×1920), not an HTML screenshot, so it needs no library. **Copy image** uses `navigator.clipboard.write` where supported and hides the button where it isn't.
+- The preview *is* the canvas: the card is drawn once to a `<canvas>` at 3× (1080×1920) and shown scaled down, so the preview and the PNG are the same pixels. "Fastest replier" needs at least 5 replies in the period.
+- **Download PNG:** `canvas.toBlob`. No HTML screenshot, so no library. **Copy image** uses `navigator.clipboard.write` where supported and hides the button where it isn't.
 - Footer brand: `● Chat Analyzer`. No domain until one exists.
 
 ## i18n
@@ -224,9 +235,9 @@ One card per person (grid, sortable by messages, fastest reply, longest messages
 
 pytest is the single command, following vinyl's layout:
 
-- `tests/test_parse.py`: fixtures in `tests/fixtures/` of small synthetic exports: iOS PT, iOS EN, Android PT, Android EN, an iOS group with a title, a zip, a multi-line message, and a deleted message. Each asserts platform, language, people order, row count, type codes and dropped system lines. The fixtures are hand-written, never real chats.
-- `tests/test_api.py`: Flask test client covering 200 on each fixture, each error code, 413 for an oversized upload, and that no file remains in the temp dir after the request.
-- `tests/test_stats.js`, `test_people.js`, `test_words.js`, `test_range.js`, `test_wrapped.js`: `node --test` on the pure modules, covering streaks across month/year edges, quantile buckets, reply-time rules (the 12 h cut-off, self-replies ignored), starter rule (≥ 4 h), whole-word matching ("oi" ≠ "noite", accents such as "você"), emoji ZWJ sequences, stopwords, and the privacy toggles on the Wrapped model. Each has a `tests/test_*.py` wrapper that skips when node is missing (vinyl's pattern).
+- `tests/test_parse.py`: fixtures are Python strings in `tests/chats.py`, so the invisible LRM/NNBSP characters appear as escapes. They are small synthetic exports: iOS PT, iOS EN, Android PT, Android EN, an iOS group with a title, a zip, a multi-line message, and a deleted message. Each asserts platform, language, people order, row count, type codes and dropped system lines. The fixtures are hand-written, never real chats.
+- `tests/test_api.py`: Flask test client covering 200 on each fixture, each error code, and 413 for an oversized upload.
+- `tests/test_stats.js`, `test_people.js`, `test_words.js`, `test_range.js`, `test_wrapped.js`, `test_export.js`, `test_i18n.js` (both languages have the same keys, and every key the UI uses exists): `node --test` on the pure modules, covering streaks across month/year edges, quantile buckets, reply-time rules (the 12 h cut-off, self-replies ignored), starter rule (≥ 4 h), whole-word matching ("oi" ≠ "noite", accents such as "você"), emoji ZWJ sequences, stopwords, and the privacy toggles on the Wrapped model. One parametrised `tests/test_js.py` runs each file and skips when node is missing (vinyl's pattern).
 - Manual verification doc: `docs/rebuild-manual-verification.md`, a checklist per tab in both themes and both languages at 400px and 1280px.
 
 ## Deployment
