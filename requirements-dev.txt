@@ -1,0 +1,4 @@
+# Test-only dependencies, kept out of requirements.txt so the deploy image stays small.
+-r requirements.txt
+
+pytest==9.1.1

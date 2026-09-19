@@ -1,9 +1,8 @@
-*.html
 *.ipynb
-
 run.py
-
 chats/
-tests/
 __pycache__/
+.pytest_cache/
 .vscode/
+.superpowers/
+secret.key
