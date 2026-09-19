@@ -102,5 +102,7 @@
     }, 'image/png'));
   }
 
-  App.register('wrapped', { render, reset() { local.period = null; } });
+  App.register('wrapped', { render, reset() {
+    Object.assign(local, { period: null, hideNames: false, showTopWord: false, fmt: 'story' });
+  } });
 })(App, ChatWrapped);

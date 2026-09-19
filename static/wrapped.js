@@ -62,7 +62,9 @@ const ChatWrapped = (function (R, S, P, W) {
   function fit(ctx, text, max) {
     if (ctx.measureText(text).width <= max) return text;
     let s = text;
-    while (s.length > 1 && ctx.measureText(s + '…').width > max) s = s.slice(0, -1);
+    // Array.from splits by Unicode code point, not UTF-16 code unit, so this
+    // never cuts a surrogate pair (e.g. an emoji) in half.
+    while (s.length > 1 && ctx.measureText(s + '…').width > max) s = Array.from(s).slice(0, -1).join('');
     return s + '…';
   }
 

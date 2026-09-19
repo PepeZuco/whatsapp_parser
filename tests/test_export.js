@@ -26,3 +26,20 @@ test('csv quotes commas, quotes and newlines, uses CRLF and a BOM', () => {
   const csv = E.toCsv([['a', 'b,c'], ['say "hi"', 'line\nbreak']]);
   assert.strictEqual(csv, '\ufeffa,"b,c"\r\n"say ""hi""","line\nbreak"\r\n');
 });
+
+test('csv neutralizes formula-injection prefixes (=, +, -, @)', () => {
+  const csv = E.toCsv([['=SUM(A1:A9)'], ['+1234'], ['-1234'], ['@cmd']]);
+  const cells = csv.replace(/^\ufeff/, '').split('\r\n').filter(Boolean);
+  assert.strictEqual(cells.length, 4);
+  for (const cell of cells) {
+    // Unquoted here (no comma/quote/newline in the value), so the raw cell
+    // text is exactly what a spreadsheet app would read.
+    assert.ok(cell.startsWith("'"), `expected leading apostrophe in ${cell}`);
+    assert.ok(!/^[=+\-@]/.test(cell), `formula trigger leaked through in ${cell}`);
+  }
+});
+
+test('csv formula-guard still quotes correctly when the value also has a comma', () => {
+  const csv = E.toCsv([['=A1,B1']]);
+  assert.strictEqual(csv, '\ufeff"\'=A1,B1"\r\n');
+});

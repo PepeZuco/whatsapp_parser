@@ -14,6 +14,10 @@ import zipfile
 
 LRM = '\u200e'
 
+# Cap on a zip entry's decompressed size, checked before AND during the read
+# (a zip's declared uncompressed size can be spoofed, so both matter).
+MAX_DECOMPRESSED = 80 * 1024 * 1024
+
 # Both header families: the date's field order is resolved per file later, so
 # the regexes only capture three numbers.
 _DATE = r'(\d{1,4})[/.\-](\d{1,2})[/.\-](\d{1,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp])?\.?\s?(?:[Mm]\.?)?'
@@ -146,18 +150,30 @@ def parse_text(text):
 
     first_sender = None
     kept = []
+    any_dated = False  # did any header at least have a decodable date?
     for i, (fields, rest) in enumerate(headers):
         sender, sep, body = rest.partition(': ')
         if not sep:
             sender, body = None, rest
         if i == 0:
             first_sender = sender
+        try:
+            ts = _epoch(fields, day_first)
+        except ValueError:
+            # Out-of-range month/day (e.g. day/month swapped past 12/31) — the
+            # header simply didn't encode a valid date; drop it like any other
+            # unparseable line instead of letting the exception escape.
+            continue
+        any_dated = True
         if _is_system(platform, sender, body, i):
             continue
-        kept.append((_epoch(fields, day_first), sender, body.strip()))
+        kept.append((ts, sender, body.strip()))
 
     if not kept:
-        raise ParseError('no_messages')
+        # Headers matched the timestamp shape but none had a real date and a
+        # real message: no real date at all means the file wasn't parseable;
+        # a real date with only system lines means there were no messages.
+        raise ParseError('unparseable' if not any_dated else 'no_messages')
 
     counts, order = {}, []
     for _, sender, _ in kept:
@@ -198,7 +214,13 @@ def parse_upload(data, filename):
                 if not txts:
                     raise ParseError('empty_zip')
                 pick = next((n for n in txts if n.endswith('_chat.txt')), txts[0])
-                data = z.read(pick)
+                info = z.getinfo(pick)
+                if info.file_size > MAX_DECOMPRESSED:
+                    raise ParseError('too_large')
+                with z.open(pick) as member:
+                    data = member.read(MAX_DECOMPRESSED + 1)
+                if len(data) > MAX_DECOMPRESSED:
+                    raise ParseError('too_large')
         except zipfile.BadZipFile:
             raise ParseError('bad_type')
     elif not name.endswith('.txt'):

@@ -68,3 +68,28 @@ test('link domains strip www and fold the tail into other', () => {
     .map(u => ['2024-01-01 10:00', 0, 'l', 'olha ' + u]);
   assert.deepStrictEqual(W.linkDomains(chat(rows), 2), [['youtube.com', 2], ['a.com', 1], ['other', 2]]);
 });
+
+test('WORD_RE keeps a typographic apostrophe (iOS autocorrect) inside a word', () => {
+  // U+2019 (’), not the ASCII apostrophe — what iOS turns "don't" into.
+  const [m] = chat([['2024-01-01 10:00', 0, 't', 'don’t stop']]);
+  assert.deepStrictEqual(W.tokens(m), ['don’t', 'stop']);
+});
+
+// --- highlight (moved from view-messages.js so it's testable) ----------------
+
+test('highlight: no regex just escapes the text', () => {
+  assert.strictEqual(W.highlight('<b>hi</b>', null), '&lt;b&gt;hi&lt;/b&gt;');
+});
+
+test('highlight: only the match is wrapped in <mark>, everything else stays escaped', () => {
+  const re = /oi/gi;
+  const out = W.highlight('oi <script>alert(1)</script>', re);
+  assert.strictEqual(out, '<mark>oi</mark> &lt;script&gt;alert(1)&lt;/script&gt;');
+  assert.ok(!out.includes('<script>'));
+});
+
+test('highlight: escapes characters inside the match itself', () => {
+  const re = /</g;
+  const out = W.highlight('a<b', re);
+  assert.strictEqual(out, 'a<mark>&lt;</mark>b');
+});

@@ -17,5 +17,5 @@ light**, **EN and PT**, at **1280px and 400px** (no horizontal page scroll).
 
 ## Tabs
 - [ ] Overview, Activity, People, Messages, Wrapped — every item in Tasks 11–15's manual checks
-- [ ] A range with no messages shows "No messages in this range." on every tab
+- [ ] A range with no messages shows "No messages in this range." on Overview, Activity, People and Messages; Wrapped uses its own period selector, independent of the date bar
 - [ ] One-person chat: People shows one card with "—" for reply/starts; Activity says "Needs at least two people."

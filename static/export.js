@@ -17,7 +17,11 @@ const ChatExport = (function () {
   }
 
   function csvCell(v) {
-    const s = String(v);
+    let s = String(v);
+    // Neutralize CSV/formula injection: a cell starting with =, +, -, @ or a
+    // tab is interpreted as a formula by Excel/LibreOffice/Sheets. A leading
+    // apostrophe forces it to be read as text and is invisible once opened.
+    if (/^[=+\-@\t]/.test(s)) s = "'" + s;
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
 

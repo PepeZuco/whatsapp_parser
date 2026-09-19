@@ -159,5 +159,11 @@
     hrs.addEventListener('mouseleave', App.hideTip);
   }
 
-  App.register('activity', { render });
+  App.register('activity', { render, reset() {
+    // gran/fill/heatMode are user preferences, kept across chats; series/geom
+    // are chart geometry computed from the previous chat's data and must not
+    // leak into the next one.
+    local.series = null;
+    local.geom = null;
+  } });
 })(App, ChatStats, ChatPeople, ChatRange);

@@ -316,4 +316,6 @@ const App = (function (R) {
 
   return { state, t, esc, num, pct, fmtDay, fmtTime, weekdayName, fmtDuration, color, colorValue, name,
            showTip, hideTip, emptyState, register, openMessages, setRange, boot, load };
-})(ChatRange);
+})(typeof ChatRange !== 'undefined' ? ChatRange : require('./range.js'));
+
+if (typeof module !== 'undefined' && module.exports) module.exports = App;

@@ -4,7 +4,7 @@ import zipfile
 
 import pytest
 
-from parse import ParseError, classify, parse_text, parse_upload
+from parse import MAX_DECOMPRESSED, ParseError, classify, parse_text, parse_upload
 from tests.chats import ANDROID_EN, ANDROID_PT, IOS_EN_GROUP, IOS_PT
 
 
@@ -124,6 +124,30 @@ def test_only_system_lines_is_no_messages():
     assert e.value.code == 'no_messages'
 
 
+@pytest.mark.parametrize('text', [
+    '45/45/2020, 10:00 - X: hi\n',
+    '[2020-13-01, 10:00:00] X: hi\n',
+])
+def test_malformed_date_alone_is_unparseable_not_a_crash(text):
+    # calendar.timegm raises ValueError for an out-of-range month/day (e.g.
+    # day/month swapped past 12). That must map to a normal ParseError, never
+    # an uncaught exception / 500.
+    with pytest.raises(ParseError) as e:
+        parse_text(text)
+    assert e.value.code == 'unparseable'
+
+
+def test_malformed_date_line_is_dropped_valid_messages_survive():
+    text = (
+        '12/03/2023, 09:15 - Ana: hi\n'
+        '45/45/2020, 10:00 - Ana: this one has a bad date\n'
+        '12/03/2023, 09:16 - Ana: bye\n'
+    )
+    r = parse_text(text)
+    bodies = [row[3] for row in r['rows']]
+    assert bodies == ['hi', 'bye']
+
+
 def _zip(files):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w') as z:
@@ -158,3 +182,38 @@ def test_upload_other_extension_is_bad_type():
 def test_upload_txt_with_bom():
     r = parse_upload(b'\xef\xbb\xbf' + ANDROID_EN.encode(), 'chat.txt')
     assert r['platform'] == 'android'
+
+
+# --- zip decompression bomb ---------------------------------------------------
+
+def test_upload_zip_rejects_oversized_declared_entry():
+    # The zip's central directory can lie about an entry's uncompressed size
+    # without needing to actually contain that much data — build one where the
+    # declared (central-directory) file_size exceeds the cap while the real
+    # payload is tiny, and confirm the size is rejected before any real
+    # decompression happens (based on z.getinfo(), not z.read()).
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w') as z:
+        zi = zipfile.ZipInfo('_chat.txt')
+        z.writestr(zi, b'hi')
+        zi.file_size = MAX_DECOMPRESSED + 1  # spoof the declared size
+    data = buf.getvalue()
+
+    with pytest.raises(ParseError) as e:
+        parse_upload(data, 'chat.zip')
+    assert e.value.code == 'too_large'
+
+
+def test_upload_zip_rejects_entry_that_actually_decompresses_too_large():
+    # A real (not spoofed) entry whose declared AND actual decompressed size
+    # exceed the cap. Highly repetitive content keeps the uploaded zip itself
+    # tiny, so this stays fast while still exercising the real read path.
+    big = b'a' * (MAX_DECOMPRESSED + 1024)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.writestr('_chat.txt', big)
+    data = buf.getvalue()
+
+    with pytest.raises(ParseError) as e:
+        parse_upload(data, 'chat.zip')
+    assert e.value.code == 'too_large'

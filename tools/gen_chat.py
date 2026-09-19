@@ -8,12 +8,12 @@ import sys
 from datetime import datetime, timedelta
 
 random.seed(7)
-LRM = '‎'
+LRM = '\u200e'
 people = sys.argv[2].split(',') if len(sys.argv) > 2 else ['Pepe', 'Jenni']
 title = sys.argv[3] if len(sys.argv) > 3 else None
 words = ('bom dia amor saudade disco vinil hoje casa jantar filme praia café show gato domingo '
          'música sério lindo almoço viagem festa livro chuva sono kkkk trabalho chegou').split()
-emojis = ['😂', '❤️', '🥺', '😍', '🎶', '🐱', '✨', '👍🏽', '👨‍👩‍👧']
+emojis = ['😂', '❤\ufe0f', '🥺', '😍', '🎶', '🐱', '✨', '👍🏽', '👨\u200d👩\u200d👧']
 media = [f'{LRM}áudio ocultado', f'{LRM}imagem ocultada', f'{LRM}figurinha omitida', f'{LRM}vídeo omitido',
          f'{LRM}GIF omitido', f'{LRM}Mensagem apagada']
 out = []

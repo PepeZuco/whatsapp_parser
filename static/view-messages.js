@@ -44,16 +44,6 @@
     local.hitPos = local.hits.length ? 0 : -1;
   }
 
-  function highlight(text, re) {
-    if (!re) return App.esc(text);
-    let out = '', last = 0;
-    for (const m of text.matchAll(re)) {
-      out += App.esc(text.slice(last, m.index)) + '<mark>' + App.esc(m[0]) + '</mark>';
-      last = m.index + m[0].length;
-    }
-    return out + App.esc(text.slice(last));
-  }
-
   function bubbles(from, to) {
     const { esc, t } = App;
     const re = W.termMatcher(local.search, { wholeWord: false });
@@ -72,7 +62,7 @@
       if (TYPE_ICON[m.k]) {
         html += `<div class="bub ${side} media" data-i="${i}">${who}<i class="ti ${TYPE_ICON[m.k]}"></i>${esc(t('type_' + m.k))}${time}</div>`;
       } else {
-        html += `<div class="bub ${side}${hitSet.has(i) ? ' hit' : ''}" data-i="${i}">${who}${highlight(m.x, re)}${time}</div>`;
+        html += `<div class="bub ${side}${hitSet.has(i) ? ' hit' : ''}" data-i="${i}">${who}${W.highlight(m.x, re)}${time}</div>`;
       }
     }
     return html;
@@ -206,6 +196,7 @@
     const st = App.state;
     if (!st.view.length) return App.emptyState(root);
     if (local.person != null && local.person >= st.chat.people.length) local.person = null;
+    if (local.type && !st.view.some(m => m.k === local.type)) local.type = '';
     computeList();
     root.innerHTML = `<div class="msg-layout"><div>${toolbar(st)}<div class="chat" id="chatBox" style="position:relative"></div></div>
       <div class="side-stack"><div id="finderSlot">${finderPanel(st)}</div>${linksPanel(st)}</div></div>`;

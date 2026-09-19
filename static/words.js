@@ -29,7 +29,7 @@ const ChatWords = (function () {
   ).split(/\s+/));
 
   const URL_RE = /https?:\/\/\S+/gi;
-  const WORD_RE = /[\p{L}\p{N}][\p{L}\p{N}'']*/gu;
+  const WORD_RE = /[\p{L}\p{N}][\p{L}\p{N}'’]*/gu;
   // One emoji = a pictograph or flag pair, its variation selector / skin tone,
   // and any ZWJ-joined continuation (👨\u200d👩\u200d👧 stays one family).
   const EMOJI_RE = /(?:\p{Regional_Indicator}{2}|\p{Extended_Pictographic}[\ufe0f\u{1F3FB}-\u{1F3FF}]*(?:\u200d\p{Extended_Pictographic}[\ufe0f\u{1F3FB}-\u{1F3FF}]*)*)/gu;
@@ -89,6 +89,26 @@ const ChatWords = (function () {
 
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
+  // App.esc is a global in the browser (app.js is loaded on every page that
+  // loads words.js); fall back to an identical escaper when words.js is
+  // require()d standalone (e.g. under node --test) and App doesn't exist.
+  function esc(s) {
+    if (typeof App !== 'undefined') return App.esc(s);
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  /* Escape `text` for HTML, wrapping every match of `re` in <mark>. Used by
+   * the messages view to highlight search hits inside a bubble. */
+  function highlight(text, re) {
+    if (!re) return esc(text);
+    let out = '', last = 0;
+    for (const m of text.matchAll(re)) {
+      out += esc(text.slice(last, m.index)) + '<mark>' + esc(m[0]) + '</mark>';
+      last = m.index + m[0].length;
+    }
+    return out + esc(text.slice(last));
+  }
+
   /* Build the matcher once per search. Whole-word boundaries are Unicode
    * letters/digits, so "oi" no longer counts inside "noite" and "você" works. */
   function termMatcher(term, { wholeWord = true, matchCase = false } = {}) {
@@ -135,7 +155,7 @@ const ChatWords = (function () {
   }
 
   return { STOPWORDS, tokens, emojisOf, wordCounts, emojiCounts, top, signatureWords,
-           termMatcher, countTerm, linkDomains };
+           termMatcher, countTerm, linkDomains, highlight };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ChatWords;
