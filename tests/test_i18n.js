@@ -16,6 +16,7 @@ const DYNAMIC = {
   lang_: ['en', 'pt'],
   role_: ['starter', 'fastest', 'night_owl', 'good_night', 'good_morning'],
   sort_: ['messages', 'fastest', 'longest', 'night'],
+  reason_: ['no_replies', 'phone_number', 'similar_name', 'span_disjoint'],
 };
 
 function usedKeys() {

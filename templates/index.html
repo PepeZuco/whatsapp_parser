@@ -19,6 +19,7 @@
   --text:#e8e8e0;--muted:#555;--label:#9a9a92;--accent:#5FBF7A;--accent-rgb:95,191,122;--danger:#c0392b;
   --card-hover:#1f1f1f;
   --p1:#5FBF7A;--p2:#F5C518;--p3:#4AA3C4;--p4:#9B7FD4;--p5:#E05A5A;--p6:#D4608A;
+  --p7:#E08A45;--p8:#46C9B0;--p9:#A8C24A;--p10:#7E8FE0;--p11:#B8865F;--p12:#5FD2E0;
   --cell0:#1a1a1a;--bubble-me:#16261b;--bubble-them:#1b1b1b;
 }
 [data-theme="light"]{
@@ -26,6 +27,7 @@
   --text:#1a1a18;--muted:#827e74;--label:#63635b;--accent:#3d8a55;--accent-rgb:61,138,85;--danger:#c0392b;
   --card-hover:#e9e5dc;
   --p1:#3d8a55;--p2:#b39609;--p3:#2b7f99;--p4:#6f4fae;--p5:#b33b3b;--p6:#b24a72;
+  --p7:#b3601f;--p8:#1f8a78;--p9:#6f8a1f;--p10:#4d5fb3;--p11:#85583a;--p12:#1f8a99;
   --cell0:#e6e2d8;--bubble-me:#dcebdc;--bubble-them:#f7f5ef;
 }
 :root{--font:'Inter',system-ui,sans-serif;--font-mono:'Courier Prime',monospace;--radius:4px;--radius-sm:3px}
@@ -270,6 +272,71 @@ select:focus,.search:focus-within{border-color:var(--accent)}
 
 .tip{position:fixed;pointer-events:none;background:var(--card);border:1px solid var(--border);padding:6px 9px;border-radius:var(--radius-sm);font-size:12px;z-index:999;box-shadow:0 6px 20px rgba(0,0,0,.3);white-space:nowrap}
 .tip b{font-family:var(--font-mono)}
+
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px}
+@media(max-width:480px){.modal-back{padding:0}}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:540px;box-shadow:0 28px 80px rgba(0,0,0,.7)}
+@media(max-width:480px){.modal{max-width:none;min-height:100vh;border:none;border-radius:0}}
+.modal-h{padding:15px 17px 13px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:11px}
+.modal-h .ic{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;background:radial-gradient(circle,var(--card) 0 34%,#000 35% 100%);box-shadow:0 0 0 1px var(--border);color:var(--accent)}
+.modal-h h3{font-size:14.5px;font-weight:700;letter-spacing:-.02em}
+.modal-h p{font-size:11px;color:var(--muted);line-height:1.45;margin-top:2px}
+.modal-h .x{margin-left:auto;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1}
+.modal-f{padding:11px 17px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.modal-f .sp{flex:1}
+.modal-f .cnt{font:11px var(--font-mono);color:var(--muted)}
+
+.ros-row{display:flex;align-items:center;gap:10px;padding:8px 17px;border-bottom:1px solid var(--border)}
+.ros-row:last-child{border-bottom:none}
+.ros-row.off{opacity:.4}
+.ros-row.drop{outline:1px dashed var(--accent);outline-offset:-1px;background:rgba(var(--accent-rgb),.07)}
+.ros-row.drag{opacity:.4}
+.ros-row .nm{flex:1;min-width:0;font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ros-row .ct{font:11px var(--font-mono);color:var(--label);min-width:40px;text-align:right}
+.ros-bar{width:58px;height:5px;background:var(--cell0);border-radius:2px;overflow:hidden;flex-shrink:0}
+.ros-bar div{height:100%}
+.ros-grip{color:var(--border);cursor:grab;flex-shrink:0;font-size:13px;line-height:1}
+.ros-cb{accent-color:var(--accent);width:15px;height:15px;flex-shrink:0;cursor:pointer;margin:0}
+.ros-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;cursor:pointer;border:none;padding:0;box-shadow:0 0 0 1px rgba(255,255,255,.15)}
+[data-theme="light"] .ros-dot{box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+.ros-dot.open{box-shadow:0 0 0 1px var(--surface),0 0 0 3px var(--accent)}
+.ros-act{width:22px;height:22px;border:1px solid transparent;border-radius:3px;background:none;color:var(--muted);cursor:pointer;flex-shrink:0;display:grid;place-items:center;font-size:13px}
+.ros-act:hover,.ros-act.lit{color:var(--accent);border-color:var(--accent)}
+.ros-group{margin:6px 11px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:rgba(var(--accent-rgb),.05)}
+.ros-group .ros-row{border-bottom:none;padding:8px 6px 7px}
+.ros-kids{padding:0 8px 7px 44px}
+.ros-kid{display:flex;gap:7px;font-size:11px;color:var(--muted);padding:2px 0}
+.ros-kid .c{margin-left:auto;font-family:var(--font-mono)}
+.ros-name{flex:1;min-width:0;height:26px;background:var(--bg);border:1px solid var(--accent);border-radius:3px;color:var(--text);padding:0 8px;font:600 12.5px var(--font);outline:none}
+.ros-menu{position:relative}
+.ros-menu .menu-list{max-height:210px;overflow-y:auto;right:0}
+.ros-menu .menu-list button{font-size:12px;padding:6px 9px}
+
+.ros-edit{margin:0 11px 8px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--card);padding:11px 12px 12px}
+.ros-edit .l{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px}
+.ros-sws{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-bottom:12px}
+@media(max-width:480px){.ros-sws{grid-template-columns:repeat(6,1fr)}}
+.ros-sw{aspect-ratio:1;border-radius:50%;border:none;padding:0;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.15)}
+[data-theme="light"] .ros-sw{box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+.ros-sw.sel{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--accent)}
+.ros-sw.taken{opacity:.45}
+.ros-prev{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);position:relative;overflow:hidden}
+.ros-prev::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--hue)}
+.ros-prev-h{display:flex;align-items:center;gap:10px;padding:10px 12px 8px}
+.ros-prev-h .n{font-size:13px;font-weight:700}
+.ros-prev-h .s{margin-left:auto;text-align:right}
+.ros-prev-h .s .v{font-size:18px;font-weight:800;color:var(--hue);line-height:1;font-variant-numeric:tabular-nums}
+.ros-prev-h .s .l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:2px}
+.ros-prev .avatar{width:32px;height:32px;font-size:13px}
+.ros-prev-strip{display:flex;height:20px;border-top:1px solid var(--border)}
+.ros-prev-strip div{display:flex;align-items:center;padding:0 7px;font:700 9.5px var(--font);color:#0c0c0c;overflow:hidden;white-space:nowrap}
+
+.ros-sugg{margin:11px 17px 6px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:rgba(var(--accent-rgb),.07);padding:9px 11px;font-size:11.5px;line-height:1.5}
+.ros-sugg .r1{display:flex;gap:8px;align-items:flex-start}
+.ros-sugg .r1 i{color:var(--accent);flex-shrink:0}
+.ros-sugg .why{color:var(--muted);font-size:10.5px;margin:6px 0 0 20px;padding-left:9px;border-left:1px solid var(--border);line-height:1.55}
+.ros-sugg .acts{display:flex;gap:6px;margin:8px 0 0 20px;flex-wrap:wrap}
+.ros-sugg .acts .btn{height:24px;font-size:11px;padding:0 9px}
 </style>
 </head>
 <body>
@@ -285,6 +352,7 @@ select:focus,.search:focus-within{border-color:var(--accent)}
     <div class="header-right">
       <span class="seg" id="langSeg"><button data-lang="en">EN</button><button data-lang="pt">PT</button></span>
       <button class="btn btn-icon" id="themeBtn" data-i18n-title="theme"><i class="ti ti-sun"></i></button>
+      <button class="btn chat-only hidden" id="rosterBtn"><i class="ti ti-users-group"></i><span data-i18n="roster_btn"></span></button>
       <div class="menu chat-only hidden">
         <button class="btn" id="exportBtn"><i class="ti ti-table-export"></i><span data-i18n="export"></span></button>
         <div class="menu-list hidden" id="exportMenu">
@@ -348,12 +416,16 @@ select:focus,.search:focus-within{border-color:var(--accent)}
     <section data-pane="wrapped" class="hidden"></section>
   </div>
 </div>
+<div class="modal-back hidden" id="rosterBack">
+  <div class="modal" id="rosterModal" role="dialog" aria-modal="true" aria-labelledby="rosterTitle"></div>
+</div>
 <div class="tip hidden" id="tip"></div>
 
 <script src="/static/range.js"></script>
 <script src="/static/stats.js"></script>
 <script src="/static/people.js"></script>
 <script src="/static/words.js"></script>
+<script src="/static/roster.js"></script>
 <script src="/static/i18n.js"></script>
 <script src="/static/wrapped.js"></script>
 <script src="/static/export.js"></script>
@@ -363,6 +435,7 @@ select:focus,.search:focus-within{border-color:var(--accent)}
 <script src="/static/view-people.js"></script>
 <script src="/static/view-messages.js"></script>
 <script src="/static/view-wrapped.js"></script>
+<script src="/static/view-roster.js"></script>
 <script>App.boot();</script>
 </body>
 </html>
