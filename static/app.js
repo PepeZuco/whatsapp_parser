@@ -2,10 +2,12 @@
 
 /* The shell: state, upload, tabs, date bar, theme, language and the URL hash.
  *
- * Each tab is a view module (static/view-*.js) that registers itself with
- * App.register(name, render). render(root) rebuilds its pane from App state.
- * Only the visible tab renders; the others are marked dirty and render when
- * opened, so a range change on a 100k chat never draws five tabs. */
+ * The page is one long scroll of five sections; the sticky tab bar scrolls to
+ * them and highlights the one you are in. Each section is a view module
+ * (static/view-*.js) that registers itself with App.register(name, render).
+ * render(root) rebuilds its pane from App state. Only sections near the
+ * viewport render; the rest are marked dirty and render as they approach, so a
+ * range change on a 100k chat never draws five sections at once. */
 
 const App = (function (R, Roster) {
 
@@ -184,13 +186,14 @@ const App = (function (R, Roster) {
     state.suggestions = Roster.suggest(chat);
     const h = R.decodeHash(location.hash);
     state.lang = h.lang || chat.language || state.lang;
-    state.tab = TABS.includes(h.tab) ? h.tab : 'overview';
     state.hashRange = { from: h.from, to: h.to };
     $('landing').classList.add('hidden');
     $('appView').classList.remove('hidden');
     document.querySelectorAll('.chat-only').forEach(el => el.classList.remove('hidden'));
+    watchPanes();
+    state.tab = null;   // markActive below must fire even for the default section
     applyRoster();
-    showTab(state.tab);
+    scrollToTab(TABS.includes(h.tab) ? h.tab : 'overview', true);
     if (typeof ChatRosterView !== 'undefined') { ChatRosterView.newChat(); ChatRosterView.open(); }
   }
 
@@ -226,6 +229,8 @@ const App = (function (R, Roster) {
     $('landing').classList.remove('hidden');
     document.querySelectorAll('.chat-only').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('[data-pane]').forEach(p => { p.innerHTML = ''; });
+    TABS.forEach(tab => dirty.add(tab));
+    window.scrollTo(0, 0);
     $('rosterModal').innerHTML = '';
     history.replaceState(null, '', location.pathname);
     renderHeader();
@@ -272,28 +277,75 @@ const App = (function (R, Roster) {
     writeHash();
   }
 
-  // ---------- tabs ----------
+  // ---------- sections ----------
+
+  const near = new Set();   // sections within a screen or so of the viewport
+  let observer = null;
+  let lockTab = null;       // section a click is scrolling to; scrollspy defers to it
+  let lockTimer = 0;
+  const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function register(name, view) { views[name] = view; }
 
   function invalidate() {
     TABS.forEach(tab => dirty.add(tab));
-    renderTab();
+    near.forEach(renderPane);
   }
 
-  function renderTab() {
-    const tab = state.tab;
+  function renderPane(tab) {
     if (!state.chat || !dirty.has(tab) || !views[tab]) return;
     dirty.delete(tab);
     views[tab].render(document.querySelector(`[data-pane="${tab}"]`));
   }
 
-  function showTab(tab) {
+  function watchPanes() {
+    if (observer || typeof IntersectionObserver === 'undefined') return;
+    observer = new IntersectionObserver(entries => {
+      for (const e of entries) {
+        const tab = e.target.dataset.anchor;
+        if (e.isIntersecting) { near.add(tab); renderPane(tab); } else near.delete(tab);
+      }
+    }, { rootMargin: '600px 0px' });
+    document.querySelectorAll('[data-anchor]').forEach(el => observer.observe(el));
+    const sticky = $('sticky');
+    const publish = () => document.documentElement.style.setProperty('--sticky-h', sticky.offsetHeight + 'px');
+    publish();
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(publish).observe(sticky);
+    window.addEventListener('scroll', spy, { passive: true });
+  }
+
+  function markActive(tab) {
+    if (state.tab === tab) return;
     state.tab = tab;
     document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== tab));
-    renderTab();
     writeHash();
+  }
+
+  /* The active section is the last one whose top has passed under the sticky bar. */
+  function spy() {
+    if (!state.chat || lockTab) return;
+    const line = $('sticky').offsetHeight + 40;
+    let active = TABS[0];
+    for (const tab of TABS) {
+      if (document.querySelector(`[data-anchor="${tab}"]`).getBoundingClientRect().top <= line) active = tab;
+    }
+    markActive(active);
+  }
+
+  /* Scroll so the section's title sits right under the sticky bar. */
+  function scrollToTab(tab, instant) {
+    renderPane(tab);
+    markActive(tab);
+    lockTab = tab;
+    clearTimeout(lockTimer);
+    const el = document.querySelector(`[data-anchor="${tab}"]`);
+    const quick = instant || reducedMotion();
+    /* Sections above the target may render while it scrolls and shift it: settle. */
+    lockTimer = setTimeout(() => {
+      lockTab = null;
+      if (Math.abs(el.getBoundingClientRect().top - $('sticky').offsetHeight) > 16) el.scrollIntoView({ block: 'start' });
+    }, quick ? 50 : 800);
+    el.scrollIntoView({ behavior: quick ? 'auto' : 'smooth', block: 'start' });
   }
 
   /* Cross-tab entry point: calendar day, busiest day, heatmap cell, word,
@@ -301,8 +353,7 @@ const App = (function (R, Roster) {
   function openMessages(filters) {
     views.messages.focus(filters);
     dirty.add('messages');
-    showTab('messages');
-    window.scrollTo(0, 0);
+    scrollToTab('messages');
   }
 
   function writeHash() {
@@ -342,7 +393,7 @@ const App = (function (R, Roster) {
       upload(e.dataTransfer.files[0]);
     });
 
-    $('tabs').addEventListener('click', e => { const b = e.target.closest('.nav-tab'); if (b) showTab(b.dataset.tab); });
+    $('tabs').addEventListener('click', e => { const b = e.target.closest('.nav-tab'); if (b) scrollToTab(b.dataset.tab); });
     $('presets').addEventListener('click', e => {
       const b = e.target.closest('button');
       if (!b) return;

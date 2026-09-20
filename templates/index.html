@@ -61,13 +61,25 @@ header{display:flex;align-items:center;justify-content:space-between;padding:28p
 .menu-list button{display:flex;width:100%;gap:8px;align-items:center;background:none;border:none;color:var(--text);font:13px var(--font);padding:8px 10px;cursor:pointer;border-radius:2px}
 .menu-list button:hover{background:var(--card-hover)}
 
-.nav-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:18px;overflow-x:auto}
-.nav-tab{padding:12px 14px 11px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border:none;border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px;white-space:nowrap;background:none;font-family:var(--font)}
+/* One page: the tab bar and the range strip form a single sticky header. Its
+   height is published as --sticky-h so a clicked section lands right below it. */
+.sticky{position:sticky;top:0;z-index:30;background:var(--bg);margin-bottom:8px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.nav-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-top:6px}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{padding:16px 20px 14px;font-size:16px;font-weight:700;color:var(--muted);cursor:pointer;border:none;border-bottom:3px solid transparent;display:flex;align-items:center;gap:9px;white-space:nowrap;background:none;font-family:var(--font);flex:1;justify-content:center}
+.nav-tab i{font-size:20px}
 .nav-tab:hover{color:var(--text)}
 .nav-tab.active{color:var(--text);border-bottom-color:var(--accent)}
 .nav-tab.active i{color:var(--accent)}
+@media(max-width:640px){.nav-tab{padding:12px 12px 10px;font-size:14px;flex:none}.nav-tab i{font-size:17px}}
 
-.datebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:24px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.pane{scroll-margin-top:calc(var(--sticky-h,0px) + 12px);padding-top:14px}
+.pane-h{font-size:22px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.pane-h i{color:var(--accent);font-size:24px}
+.pane>section:empty{min-height:60vh}
+
+.datebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
+@media(max-width:640px){.datebar .lbl{display:none}.datebar .seg{flex-wrap:nowrap;max-width:100%;overflow-x:auto}.datebar .range-info{margin-left:0}}
 .datebar .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px;margin-right:4px}
 .datebar .lbl i{color:var(--accent);font-size:14px}
 .datebar input[type=date]{height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text);padding:0 8px;font:13px var(--font-mono);color-scheme:dark}
@@ -393,27 +405,28 @@ select:focus,.search:focus-within{border-color:var(--accent)}
   </div>
 
   <div id="appView" class="hidden">
-    <nav class="nav-tabs" id="tabs">
-      <button class="nav-tab" data-tab="overview"><i class="ti ti-layout-dashboard"></i><span data-i18n="tab_overview"></span></button>
-      <button class="nav-tab" data-tab="activity"><i class="ti ti-chart-dots-3"></i><span data-i18n="tab_activity"></span></button>
-      <button class="nav-tab" data-tab="people"><i class="ti ti-users"></i><span data-i18n="tab_people"></span></button>
-      <button class="nav-tab" data-tab="messages"><i class="ti ti-messages"></i><span data-i18n="tab_messages"></span></button>
-      <button class="nav-tab" data-tab="wrapped"><i class="ti ti-gift"></i><span data-i18n="tab_wrapped"></span></button>
-    </nav>
-
-    <div class="datebar" id="datebar">
-      <span class="lbl"><i class="ti ti-calendar"></i><span data-i18n="range"></span></span>
-      <span class="seg" id="presets"></span>
-      <input type="date" id="fromIn"><span class="arrow">→</span><input type="date" id="toIn">
-      <span class="range-info" id="rangeInfo"></span>
-      <div class="warn hidden" id="rangeWarn"><i class="ti ti-alert-triangle"></i><span data-i18n="date_conflict"></span></div>
+    <div class="sticky" id="sticky">
+      <nav class="nav-tabs" id="tabs">
+        <button class="nav-tab" data-tab="overview"><i class="ti ti-layout-dashboard"></i><span data-i18n="tab_overview"></span></button>
+        <button class="nav-tab" data-tab="activity"><i class="ti ti-chart-dots-3"></i><span data-i18n="tab_activity"></span></button>
+        <button class="nav-tab" data-tab="people"><i class="ti ti-users"></i><span data-i18n="tab_people"></span></button>
+        <button class="nav-tab" data-tab="messages"><i class="ti ti-messages"></i><span data-i18n="tab_messages"></span></button>
+        <button class="nav-tab" data-tab="wrapped"><i class="ti ti-gift"></i><span data-i18n="tab_wrapped"></span></button>
+      </nav>
+      <div class="datebar" id="datebar">
+        <span class="lbl"><i class="ti ti-calendar"></i><span data-i18n="range"></span></span>
+        <span class="seg" id="presets"></span>
+        <input type="date" id="fromIn"><span class="arrow">→</span><input type="date" id="toIn">
+        <span class="range-info" id="rangeInfo"></span>
+        <div class="warn hidden" id="rangeWarn"><i class="ti ti-alert-triangle"></i><span data-i18n="date_conflict"></span></div>
+      </div>
     </div>
 
-    <section data-pane="overview"></section>
-    <section data-pane="activity" class="hidden"></section>
-    <section data-pane="people" class="hidden"></section>
-    <section data-pane="messages" class="hidden"></section>
-    <section data-pane="wrapped" class="hidden"></section>
+    <div class="pane" data-anchor="overview"><h2 class="pane-h"><i class="ti ti-layout-dashboard"></i><span data-i18n="tab_overview"></span></h2><section data-pane="overview"></section></div>
+    <div class="pane" data-anchor="activity"><h2 class="pane-h"><i class="ti ti-chart-dots-3"></i><span data-i18n="tab_activity"></span></h2><section data-pane="activity"></section></div>
+    <div class="pane" data-anchor="people"><h2 class="pane-h"><i class="ti ti-users"></i><span data-i18n="tab_people"></span></h2><section data-pane="people"></section></div>
+    <div class="pane" data-anchor="messages"><h2 class="pane-h"><i class="ti ti-messages"></i><span data-i18n="tab_messages"></span></h2><section data-pane="messages"></section></div>
+    <div class="pane" data-anchor="wrapped"><h2 class="pane-h"><i class="ti ti-gift"></i><span data-i18n="tab_wrapped"></span></h2><section data-pane="wrapped"></section></div>
   </div>
 </div>
 <div class="modal-back hidden" id="rosterBack">
