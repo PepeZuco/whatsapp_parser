@@ -124,6 +124,14 @@ const ChatRoster = (function () {
     return r;
   }
 
+  /* Where the merged entry lands after merge(). splice(other, 1) pulls every
+   * later entry down one, so a target above the removed index shifts and a
+   * target below it does not. This is NOT min(target, other) — that only
+   * coincides when the two are adjacent, or when other is above target. */
+  function mergedIndex(target, other) {
+    return other < target ? target - 1 : target;
+  }
+
   function takenSlots(roster, except) {
     const out = new Set();
     roster.entries.forEach((e, i) => { if (i !== except) out.add(e.color); });
@@ -267,7 +275,7 @@ const ChatRoster = (function () {
   }
 
   return { SLOTS, RosterError, clone, initial, apply, counts,
-           toggle, setColor, rename, merge, split, takenSlots, entryOf, sameEntry,
+           toggle, setColor, rename, merge, mergedIndex, split, takenSlots, entryOf, sameEntry,
            suggest, isPhone, normalise, similarity };
 })();
 

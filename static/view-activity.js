@@ -84,10 +84,18 @@
     if (n < 2) return `<div class="dash">${esc(t('needs_two'))}</div>`;
     const fl = P.firstLast(st.view, n);
     const starters = P.starters(st.view, n);
-    const legend = st.chat.people.slice(0, 6).map((p, i) => `<div class="who"><span class="dot" style="background:${App.color(i)}"></span>${esc(p)}</div>`).join('');
-    return `<div class="fl-row"><span class="k"><i class="ti ti-sunrise" style="color:var(--p2)"></i>${esc(t('first_message'))}</span>${bar(shareOf(fl.first))}</div>
-      <div class="fl-row"><span class="k"><i class="ti ti-moon" style="color:var(--p3)"></i>${esc(t('last_message'))}</span>${bar(shareOf(fl.last))}</div>
-      <div class="fl-row"><span class="k"><i class="ti ti-message-plus" style="color:var(--accent)"></i>${esc(t('starts_convos'))}</span>${bar(shareOf(starters))}</div>
+    const bars = [shareOf(fl.first), shareOf(fl.last), shareOf(starters)];
+    // Each bar ranks independently and keeps its own top 6 plus "Others", so the
+    // legend is the union of whoever any of them actually shows — never the
+    // chat's first six people, who may appear in none of them.
+    const shown = new Map();
+    for (const entries of bars) for (const e of entries) shown.set(e.p, (shown.get(e.p) || 0) + e.count);
+    const legend = [...shown.keys()]
+      .sort((a, b) => (a < 0) - (b < 0) || shown.get(b) - shown.get(a))
+      .map(p => `<div class="who"><span class="dot" style="background:${App.color(p)}"></span>${esc(App.name(p))}</div>`).join('');
+    return `<div class="fl-row"><span class="k"><i class="ti ti-sunrise" style="color:var(--p2)"></i>${esc(t('first_message'))}</span>${bar(bars[0])}</div>
+      <div class="fl-row"><span class="k"><i class="ti ti-moon" style="color:var(--p3)"></i>${esc(t('last_message'))}</span>${bar(bars[1])}</div>
+      <div class="fl-row"><span class="k"><i class="ti ti-message-plus" style="color:var(--accent)"></i>${esc(t('starts_convos'))}</span>${bar(bars[2])}</div>
       <div class="who-list row">${legend}</div>
       <div class="note"><i class="ti ti-info-circle"></i>${esc(t('starter_note'))}</div>`;
   }

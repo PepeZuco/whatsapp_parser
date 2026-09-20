@@ -226,6 +226,7 @@ const App = (function (R, Roster) {
     $('landing').classList.remove('hidden');
     document.querySelectorAll('.chat-only').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('[data-pane]').forEach(p => { p.innerHTML = ''; });
+    $('rosterModal').innerHTML = '';
     history.replaceState(null, '', location.pathname);
     renderHeader();
   }
@@ -235,7 +236,8 @@ const App = (function (R, Roster) {
     if (!state.chat) { sub.textContent = t('tagline'); return; }
     const c = state.chat;
     const who = c.title || (c.people.length <= 3 ? c.people.join(' & ') : t('n_people', { n: c.people.length }));
-    const off = state.roster ? state.roster.entries.filter(e => !e.on).length : 0;
+    const off = state.roster
+      ? state.roster.entries.reduce((n, e) => n + (e.on ? 0 : e.src.length), 0) : 0;
     sub.innerHTML = `<b>${esc(who)}</b> · ${esc(t('n_messages', { n: num(state.msgs.length) }))} · ` +
       `${esc(t(c.platform === 'ios' ? 'iphone_export' : 'android_export'))} · ${esc(t('lang_' + c.language))}` +
       (off ? ` · ${esc(t('roster_excluded', { n: num(off) }))}` : '');
