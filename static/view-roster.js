@@ -109,9 +109,14 @@ const ChatRosterView = (function (App, Roster) {
     const { esc, t, num } = App;
     const c = Roster.counts(chat(), local.draft);
     const max = Math.max(...c.perEntry, 1);
+    // The preview mimics a real People card, so it must use the population the
+    // People tab actually draws — the date-filtered one. The rows and footer
+    // above deliberately stay whole-chat. Only computed when an editor is open,
+    // so an ordinary render does not pay for a second O(rows) pass.
+    const cr = local.open >= 0 ? Roster.counts(chat(), local.draft, App.state.from, App.state.to) : null;
     const list = local.draft.entries.map((e, i) => {
       const main = e.src.length > 1 ? group(e, i, c.perEntry[i]) : row(e, i, c.perEntry[i], max);
-      return main + (local.open === i ? editor(e, i, c.perEntry[i], c.messages) : '');
+      return main + (local.open === i ? editor(e, i, cr.perEntry[i], cr.messages) : '');
     }).join('');
     $('rosterModal').innerHTML = `
       <div class="modal-h">

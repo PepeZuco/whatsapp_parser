@@ -107,6 +107,20 @@ test('counts reports per-entry totals and the live selected totals', () => {
   assert.deepStrictEqual(Roster.counts(CHAT, r), { perEntry: [3, 2], on: 1, messages: 3 });
 });
 
+test('counts restricts to a day range when bounds are given', () => {
+  const r = Roster.initial(CHAT);
+  const day = s => Math.floor(at(s) / 86400);
+  assert.deepStrictEqual(Roster.counts(CHAT, r).perEntry, [2, 1, 2]);
+  const march = Roster.counts(CHAT, r, day('2024-03-01 00:00'), day('2024-03-31 00:00'));
+  assert.deepStrictEqual(march.perEntry, [2, 1, 0]);
+  assert.strictEqual(march.messages, 3);
+});
+
+test('counts with no bounds counts the whole chat', () => {
+  const r = Roster.initial(CHAT);
+  assert.deepStrictEqual(Roster.counts(CHAT, r), Roster.counts(CHAT, r, null, null));
+});
+
 test('toggle flips one entry and leaves the input alone', () => {
   const r = Roster.initial(CHAT);
   const out = Roster.toggle(r, 1);

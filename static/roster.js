@@ -74,11 +74,18 @@ const ChatRoster = (function () {
     };
   }
 
-  /* Message totals for the modal: one per entry (merged entries add up), plus
-   * how many entries and messages are currently selected. */
-  function counts(chat, roster) {
+  /* Message totals for the modal. With fromDay/toDay, only rows inside that day
+   * range are counted — the colour preview needs the same population the tabs
+   * draw, which is date-filtered. The roster list itself passes no bounds,
+   * because choosing who is in the analysis is a whole-chat decision. */
+  function counts(chat, roster, fromDay, toDay) {
+    const lo = fromDay == null ? -Infinity : fromDay;
+    const hi = toDay == null ? Infinity : toDay;
     const per = new Array(chat.people.length).fill(0);
-    for (const r of chat.rows) per[r[1]]++;
+    for (const r of chat.rows) {
+      const d = Math.floor(r[0] / DAY);
+      if (d >= lo && d <= hi) per[r[1]]++;
+    }
     const perEntry = roster.entries.map(e => e.src.reduce((s, i) => s + per[i], 0));
     let on = 0, messages = 0;
     roster.entries.forEach((e, i) => { if (e.on) { on++; messages += perEntry[i]; } });
