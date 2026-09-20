@@ -113,7 +113,7 @@ const ChatRosterView = (function (App, Roster) {
   function wire() {
     const m = $('rosterModal');
     $('rosClose').addEventListener('click', close);
-    $('rosReset').addEventListener('click', () => { local.open = -1; edit(() => Roster.initial(chat())); });
+    $('rosReset').addEventListener('click', () => { local.open = -1; edit(() => Roster.initial(chat()), '#rosReset'); });
     $('rosApply').addEventListener('click', apply);
 
     m.querySelectorAll('[data-toggle]').forEach(el =>
@@ -128,7 +128,11 @@ const ChatRosterView = (function (App, Roster) {
       el.addEventListener('click', e => {
         e.stopPropagation();
         const i = +el.dataset.menu;
-        local.menu = local.menu === i ? -1 : i;
+        const opening = local.menu !== i;
+        local.menu = opening ? i : -1;
+        // render() destroys the button that was just activated: focus the first
+        // menu item when opening, and the ⇄ button again when closing.
+        local.refocus = opening ? `[data-merge="${i}"]` : `[data-menu="${i}"]`;
         render();
       }));
     m.querySelectorAll('[data-merge]').forEach(el =>
@@ -185,6 +189,14 @@ const ChatRosterView = (function (App, Roster) {
     const els = focusables();
     if (!els.length) return;
     const first = els[0], last = els[els.length - 1];
+    // Focus can sit outside the modal entirely — render() replaces innerHTML and
+    // drops it to <body>. A boundary-only check never fires there, so Tab would
+    // walk into the page behind the dim. Pull it back in.
+    if (!$('rosterModal').contains(document.activeElement)) {
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+      return;
+    }
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
