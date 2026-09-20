@@ -127,7 +127,21 @@ with
   --p7:#b3601f;--p8:#1f8a78;--p9:#6f8a1f;--p10:#4d5fb3;--p11:#85583a;--p12:#1f8a99;
 ```
 
-The light values are deepened counterparts of the dark ones, the same treatment the first six already get, so text in a person's colour on the cream `--surface` still clears 4.5:1.
+The light values are deepened counterparts of the dark ones, tuned the same way
+the first six already are: a person's colour is overwhelmingly used as a **fill
+carrying `#0c0c0c` text** — avatar, share segment, dot, KPI rail, finder track —
+in 8 of its 13 call sites, so the light-mode value is darkened enough to read on
+cream while staying light enough for black text to sit on it.
+
+It does **not** clear 4.5:1 when used as small text, and neither do four of the
+six existing slots (`--p1` the app's own accent is 3.62:1 on `--surface`). The two
+uses pull in opposite directions and cannot both be maximised by one token; the
+palette resolves toward fills. `.bub .who` in `static/view-messages.js:60` is the
+one place a person's colour becomes 11px bold text, and it is a pre-existing
+accessibility gap that this task widens from six slots to twelve. **Do not retune
+the hexes to chase 4.5:1** — that would make the six new colours systematically
+darker than the original six and degrade the dominant fill use. Transcribe the
+values above exactly.
 
 - [ ] **Step 4: Rewire the colour helpers in `static/app.js`**
 

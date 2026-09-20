@@ -20,7 +20,7 @@ The modal can be reopened from the header at any time.
 |---|---|
 | Merge gesture | Drag one row onto another. A `⇄` button on each row opens a "same person as…" list — the same operation for keyboard and touch, since drag-and-drop is unusable on a phone and unreachable by keyboard, and this app is responsive to 480px. |
 | Unselecting | The person is **dropped entirely**. Their messages leave the dataset: every total, percentage, reply median, heatmap cell, word count, Wrapped figure and export row is computed as if they never wrote. "87% of messages" keeps meaning 87% of what is shown. |
-| Colour choice | A **curated palette of twelve** theme-paired slots. A colour is stored as a slot index, never a hex, so the theme toggle keeps working and no pick can be illegible. |
+| Colour choice | A **curated palette of twelve** theme-paired slots. A colour is stored as a slot index, never a hex, so the theme toggle keeps working and no pick can be illegible. "Illegible" here means *as a fill* — see Palette contrast below. |
 | Colour preview | Picking a colour shows a **live People card** for that person underneath the swatches, in the current theme only. |
 | Duplicate detection | In v1, **conservative**: flag a pair only on strong name affinity *and* near-disjoint activity *and* no replies between them. Shows its reasoning. Never auto-applies. |
 | When it opens | On **every** load, including a two-person chat with nothing to decide. |
@@ -42,6 +42,33 @@ The modal can be reopened from the header at any time.
   unreadable card.
 - **Server-side anything.** `parse.py` and `/api/parse` are untouched.
 - Editing a non-merged person's display name. Names come from the export.
+
+## Palette contrast — a known, inherited limit
+
+Measured during Task 1's review rather than assumed. A person's colour serves two
+incompatible jobs. In 8 of its 13 call sites it is a **fill carrying `#0c0c0c`
+text** (avatar, share segment, legend dot, KPI rail, finder track), which wants a
+*light* value. In one site — `.bub .who`, `static/view-messages.js:60` — it is
+**11px bold text on a near-white bubble**, which wants a *dark* value. One token
+cannot maximise both.
+
+The existing six slots resolve this toward fills, and consequently four of them
+fail 4.5:1 as small text on `--surface`: `--p1` 3.62:1 (the app's own accent),
+`--p2` 2.47:1, `--p3` 3.91:1, `--p6` 4.36:1. The six new slots are tuned the same
+way and four of them fail likewise (`--p7` 3.90, `--p8` 3.62, `--p9` 3.37, `--p12`
+3.49).
+
+**This feature does not fix that, and deliberately does not retune the palette to
+chase it.** Making the new six pass would leave them visibly darker than the
+original six — incoherent in a design system copied wholesale from
+vinyl-collection — and would weaken the dominant fill use. What this feature does
+do is widen the exposure from six slots to twelve.
+
+The real fix is one of two things, both outside this scope: stop using the raw
+person colour as small text at `view-messages.js:60` (e.g. keep the name in
+`--text` and carry identity with a coloured dot, as the Activity legend already
+does), or retune all twelve light values and accept the visual change. Recorded
+here so the next person finds it stated rather than rediscovering it.
 
 ## Architecture
 
