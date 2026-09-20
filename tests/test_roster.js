@@ -106,3 +106,94 @@ test('counts reports per-entry totals and the live selected totals', () => {
   ] };
   assert.deepStrictEqual(Roster.counts(CHAT, r), { perEntry: [3, 2], on: 1, messages: 3 });
 });
+
+test('toggle flips one entry and leaves the input alone', () => {
+  const r = Roster.initial(CHAT);
+  const out = Roster.toggle(r, 1);
+  assert.strictEqual(out.entries[1].on, false);
+  assert.strictEqual(r.entries[1].on, true);
+});
+
+test('setColor wraps a slot into the palette', () => {
+  const r = Roster.initial(CHAT);
+  assert.strictEqual(Roster.setColor(r, 0, 5).entries[0].color, 5);
+  assert.strictEqual(Roster.setColor(r, 0, 12).entries[0].color, 0);
+  assert.strictEqual(Roster.setColor(r, 0, -1).entries[0].color, 11);
+});
+
+test('rename trims, and an empty name falls back to the first source name', () => {
+  const r = Roster.initial(CHAT);
+  assert.strictEqual(Roster.rename(r, 0, '  Aninha  ', CHAT).entries[0].name, 'Aninha');
+  assert.strictEqual(Roster.rename(r, 0, '   ', CHAT).entries[0].name, 'Ana');
+});
+
+test('merge keeps the target name, colour and on-state and drops the other row', () => {
+  let r = Roster.initial(CHAT);
+  r = Roster.setColor(r, 0, 7);
+  r = Roster.toggle(r, 2);                        // Caio is off
+  const out = Roster.merge(r, 0, 2);              // fuse Caio into Ana
+  assert.strictEqual(out.entries.length, 2);
+  assert.deepStrictEqual(out.entries[0], { src: [0, 2], name: 'Ana', color: 7, on: true });
+  assert.deepStrictEqual(out.entries[1].src, [1]);
+});
+
+test('merge works when the target sits after the other entry', () => {
+  const out = Roster.merge(Roster.initial(CHAT), 2, 0);
+  assert.strictEqual(out.entries.length, 2);
+  const caio = out.entries.find(e => e.name === 'Caio');
+  assert.deepStrictEqual(caio.src, [2, 0]);
+});
+
+test('merging an entry into itself is a no-op', () => {
+  const out = Roster.merge(Roster.initial(CHAT), 1, 1);
+  assert.strictEqual(out.entries.length, 3);
+});
+
+test('split restores original names in src order, in place', () => {
+  let r = Roster.merge(Roster.initial(CHAT), 0, 2);   // Ana + Caio
+  r = Roster.rename(r, 0, 'Ana S.', CHAT);
+  const out = Roster.split(r, 0, CHAT);
+  assert.deepStrictEqual(out.entries.map(e => e.name), ['Ana', 'Caio', 'Pepe']);
+  assert.deepStrictEqual(out.entries.map(e => e.src), [[0], [2], [1]]);
+});
+
+test('split gives the first member the group colour and the rest unused slots', () => {
+  let r = Roster.merge(Roster.initial(CHAT), 0, 2);
+  r = Roster.setColor(r, 0, 5);                      // group is slot 5; Pepe holds slot 1
+  const out = Roster.split(r, 0, CHAT);
+  assert.strictEqual(out.entries[0].color, 5);
+  assert.strictEqual(out.entries[1].color, 0);       // lowest slot nobody is using
+  assert.strictEqual(new Set(out.entries.map(e => e.color)).size, 3);
+});
+
+test('split members inherit the group on-state, and a lone entry is untouched', () => {
+  let r = Roster.merge(Roster.initial(CHAT), 0, 2);
+  r = Roster.toggle(r, 0);
+  const out = Roster.split(r, 0, CHAT);
+  assert.deepStrictEqual(out.entries.slice(0, 2).map(e => e.on), [false, false]);
+  assert.strictEqual(Roster.split(Roster.initial(CHAT), 1, CHAT).entries.length, 3);
+});
+
+test('merge then split then merge keeps every source index exactly once', () => {
+  const all = r => r.entries.flatMap(e => e.src).sort((a, b) => a - b);
+  let r = Roster.merge(Roster.initial(CHAT), 0, 1);
+  assert.deepStrictEqual(all(r), [0, 1, 2]);
+  r = Roster.split(r, 0, CHAT);
+  assert.deepStrictEqual(all(r), [0, 1, 2]);
+  r = Roster.merge(r, 2, 1);
+  assert.deepStrictEqual(all(r), [0, 1, 2]);
+  assert.ok(Roster.apply(CHAT, r).rows.length > 0);
+});
+
+test('takenSlots lists the colours other entries are using', () => {
+  const r = Roster.initial(CHAT);
+  assert.deepStrictEqual([...Roster.takenSlots(r, 1)].sort(), [0, 2]);
+});
+
+test('entryOf and sameEntry locate a source index after merging', () => {
+  const r = Roster.merge(Roster.initial(CHAT), 0, 2);
+  assert.strictEqual(Roster.entryOf(r, 2), 0);
+  assert.strictEqual(Roster.entryOf(r, 1), 1);
+  assert.strictEqual(Roster.sameEntry(r, 0, 2), true);
+  assert.strictEqual(Roster.sameEntry(r, 0, 1), false);
+});

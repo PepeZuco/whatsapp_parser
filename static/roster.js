@@ -80,7 +80,75 @@ const ChatRoster = (function () {
     return { perEntry, on, messages };
   }
 
-  return { SLOTS, RosterError, clone, initial, apply, counts };
+  // ---------- edits (every one returns a new roster) ----------
+
+  function toggle(roster, i) {
+    const r = clone(roster);
+    r.entries[i].on = !r.entries[i].on;
+    return r;
+  }
+
+  function setColor(roster, i, slot) {
+    const r = clone(roster);
+    r.entries[i].color = ((slot % SLOTS) + SLOTS) % SLOTS;
+    return r;
+  }
+
+  /* A name trimmed to nothing falls back to the export's own name for the
+   * entry's first source, so an entry can never end up nameless. */
+  function rename(roster, i, name, chat) {
+    const r = clone(roster);
+    r.entries[i].name = String(name).trim() || chat.people[r.entries[i].src[0]];
+    return r;
+  }
+
+  /* Fuse `other` into `target`: the result keeps the target's name, colour and
+   * on-state, which is what makes "merge as <this name>" a single action. */
+  function merge(roster, target, other) {
+    const r = clone(roster);
+    if (target === other) return r;
+    r.entries[target].src = r.entries[target].src.concat(r.entries[other].src);
+    r.entries.splice(other, 1);
+    return r;
+  }
+
+  function takenSlots(roster, except) {
+    const out = new Set();
+    roster.entries.forEach((e, i) => { if (i !== except) out.add(e.color); });
+    return out;
+  }
+
+  /* Undo a merge in place: one entry per source, original names, the first
+   * keeping the group's colour and the rest taking slots nobody else holds. */
+  function split(roster, i, chat) {
+    const e = roster.entries[i];
+    if (e.src.length < 2) return clone(roster);
+    const used = takenSlots(roster, i);
+    const restored = e.src.map((s, k) => {
+      let color = e.color;
+      if (k > 0) {
+        color = s % SLOTS;
+        for (let c = 0; c < SLOTS; c++) if (!used.has(c)) { color = c; break; }
+      }
+      used.add(color);
+      return { src: [s], name: chat.people[s], color, on: e.on };
+    });
+    const r = clone(roster);
+    r.entries.splice(i, 1, ...restored);
+    return r;
+  }
+
+  function entryOf(roster, src) {
+    return roster.entries.findIndex(e => e.src.indexOf(src) >= 0);
+  }
+
+  function sameEntry(roster, a, b) {
+    const i = entryOf(roster, a);
+    return i >= 0 && i === entryOf(roster, b);
+  }
+
+  return { SLOTS, RosterError, clone, initial, apply, counts,
+           toggle, setColor, rename, merge, split, takenSlots, entryOf, sameEntry };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ChatRoster;
