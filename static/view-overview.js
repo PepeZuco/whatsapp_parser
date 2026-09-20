@@ -54,7 +54,7 @@
   function calendar(st) {
     const { t, esc } = App;
     const years = [];
-    for (let y = R.yearOfDay(st.from); y <= R.yearOfDay(st.to); y++) years.push(y);
+    for (let y = R.yearOfDay(st.to); y >= R.yearOfDay(st.from); y--) years.push(y);  // newest first
     const daily = S.dailyCounts(st.view);
     const blocks = years.map(y => {
       const cal = S.calendarYear(daily, y, st.from, st.to);
@@ -77,7 +77,7 @@
     const th = blocks[0].th;
     return `<div class="sec">
       <div class="sec-h"><div class="t"><i class="ti ti-calendar-stats"></i>${esc(t('every_day'))}</div>
-        <div class="r"><span class="seg sm" id="calYears">${years.map(y => `<button data-year="${y}" class="${y === years[years.length - 1] ? 'on' : ''}">${y}</button>`).join('')}</span></div></div>
+        <div class="r"><span class="seg sm" id="calYears">${years.map(y => `<button data-year="${y}" class="${y === years[0] ? 'on' : ''}">${y}</button>`).join('')}</span></div></div>
       <div class="panel">
         <div class="cal-row"><div class="cal-days">${wd}</div>
           <div class="cal-wrap" id="calWrap"><div class="cal-strip" id="cal">${blocks.map(b => b.html).join('')}</div></div></div>
@@ -143,7 +143,7 @@
       <div class="note"><i class="ti ti-pointer"></i>${esc(t('cloud_hint'))}</div></div></div>`;
   }
 
-  /* Horizontal year strip: opens on the newest year, eases back to the oldest
+  /* Horizontal year strip: newest year first, eases right toward the oldest
    * (unless the user interferes); year buttons scroll a year's January to the
    * left edge; the active button follows the scroll. */
   function calendarScroll(root) {
@@ -178,12 +178,16 @@
       const b = e.target.closest('button');
       if (!b) return;
       const i = btns.indexOf(b);
-      still ? (wrap.scrollLeft = left(i)) : glide(left(i), 600);
+      still ? (wrap.scrollLeft = left(i)) : glide(left(i), 900);
     });
     if (local.scroll != null) { wrap.scrollLeft = local.scroll; mark(); return; }
-    wrap.scrollLeft = left(blocks.length - 1);
     mark();
-    if (!still && blocks.length > 1) glide(0, 400 + 500 * blocks.length);
+    if (still || blocks.length < 2) return;
+    // Hold until the people modal is confirmed/closed, then slide to older years.
+    const go = () => { if (wrap.isConnected && local.scroll == null) glide(left(blocks.length - 1), 900 + 800 * blocks.length); };
+    if (typeof ChatRosterView !== 'undefined' && ChatRosterView.isOpen()) {
+      document.addEventListener('roster:closed', go, { once: true });
+    } else go();
   }
 
   function render(root) {
