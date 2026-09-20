@@ -105,6 +105,25 @@ const ChatRosterView = (function (App, Roster) {
       <div class="note"><i class="ti ti-info-circle"></i>${esc(t('roster_preview_note', { name }))}</div></div>`;
   }
 
+  /* One card per probable duplicate, with the evidence spelled out so a wrong
+   * guess is easy to reject. Never applies itself. */
+  function banner() {
+    const { esc, t } = App;
+    const people = chat().people;
+    return suggestions().map(s => {
+      const a = people[s.a], b = people[s.b];
+      const why = s.reasons.map(k => t('reason_' + k, { a, b })).join(' ');
+      return `<div class="ros-sugg" data-sugg="${esc(suggKey(s.a, s.b))}">
+        <div class="r1"><i class="ti ti-alert-triangle"></i><div>${t('roster_dup_title', { a: esc(a), b: esc(b) })}</div></div>
+        <div class="why">${esc(why)}</div>
+        <div class="acts">
+          <button class="btn btn-primary" data-keep="${s.a}" data-drop="${s.b}">${esc(t('roster_dup_merge_as', { name: a }))}</button>
+          <button class="btn" data-keep="${s.b}" data-drop="${s.a}">${esc(t('roster_dup_merge_as', { name: b }))}</button>
+          <button class="btn" data-reject="${esc(suggKey(s.a, s.b))}">${esc(t('roster_dup_reject'))}</button>
+        </div></div>`;
+    }).join('');
+  }
+
   function render() {
     const { esc, t, num } = App;
     const c = Roster.counts(chat(), local.draft);
@@ -127,7 +146,7 @@ const ChatRosterView = (function (App, Roster) {
         </div>
         <button class="x" id="rosClose" aria-label="${esc(t('roster_cancel'))}">&times;</button>
       </div>
-      <div id="rosBanner"></div>
+      <div id="rosBanner">${banner()}</div>
       <div id="rosList">${list}</div>
       <div class="note" style="padding:0 17px 10px"><i class="ti ti-info-circle"></i>${esc(t('roster_merge_note'))}</div>
       <div class="modal-f">
@@ -204,6 +223,25 @@ const ChatRosterView = (function (App, Roster) {
       });
       el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
     });
+
+    m.querySelectorAll('[data-keep]').forEach(el =>
+      el.addEventListener('click', () => {
+        const keep = +el.dataset.keep, drop = +el.dataset.drop;
+        local.dismissed.add(suggKey(keep, drop));
+        local.open = -1;
+        edit(r => {
+          const target = Roster.entryOf(r, keep), other = Roster.entryOf(r, drop);
+          if (target < 0 || other < 0 || target === other) return r;
+          // merge() splices `other` out of the entries array: when other < target
+          // every later index shifts down by one, so the surviving entry always
+          // ends up at the lower of the two indices, regardless of which side of
+          // the pair the user chose to keep.
+          return Roster.rename(Roster.merge(r, target, other), Math.min(target, other),
+                               chat().people[keep], chat());
+        });
+      }));
+    m.querySelectorAll('[data-reject]').forEach(el =>
+      el.addEventListener('click', () => { local.dismissed.add(el.dataset.reject); render(); }));
 
     m.querySelectorAll('.ros-row').forEach(el => {
       el.addEventListener('dragstart', e => {
