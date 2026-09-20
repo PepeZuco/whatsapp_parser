@@ -1187,10 +1187,21 @@ Add `applyRoster` to the object `App` returns.
 Run: `python -m pytest -q`
 Expected: PASS, including `test_app_color.js` and `test_app_esc.js` — `require('../static/app.js')` still works because `roster.js` resolves through the same `require` fallback.
 
-- [ ] **Step 8: Verify by hand that nothing changed**
+- [ ] **Step 8: Verify by hand that nothing changed — with one deliberate exception**
 
 Run: `python app.py`, open `http://localhost:5001`, upload `chats/group.txt`.
-Expected: identical to before — five tabs, same numbers, same colours, date bar and hash still restore a range on reload-after-reupload. A **People** button now sits in the header and does nothing yet.
+Expected: identical to before — five tabs, same numbers, date bar and hash still
+restore a range on reload-after-reupload. A **People** button now sits in the
+header and does nothing yet.
+
+**The one deliberate exception: chats with more than six participants get new
+colours.** The palette grew from six slots to twelve in Task 1, so `App.color(p)`
+already went from `p % 6` to `p % 12` app-wide, and Step 5 brings the Wrapped
+canvas into line. People at index 6–11 therefore now get their own colour instead
+of reusing person 0–5's. That is the entire point of the palette expansion, not a
+regression — but it *is* user-visible, so check a 7+ person chat's Wrapped tab and
+People cards and confirm the new colours look right, rather than checking that
+nothing moved. On a chat of six or fewer, nothing changes at all.
 
 - [ ] **Step 9: Commit**
 
