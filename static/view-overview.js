@@ -54,7 +54,7 @@
   function calendar(st) {
     const { t, esc } = App;
     const years = [];
-    for (let y = R.yearOfDay(st.to); y >= R.yearOfDay(st.from); y--) years.push(y);  // newest first
+    for (let y = R.yearOfDay(st.from); y <= R.yearOfDay(st.to); y++) years.push(y);
     const daily = S.dailyCounts(st.view);
     const blocks = years.map(y => {
       const cal = S.calendarYear(daily, y, st.from, st.to);
@@ -143,7 +143,7 @@
       <div class="note"><i class="ti ti-pointer"></i>${esc(t('cloud_hint'))}</div></div></div>`;
   }
 
-  /* Horizontal year strip: newest year first, eases right toward the oldest
+  /* Horizontal year strip: oldest year first, eases right toward the newest
    * (unless the user interferes); year buttons scroll a year's January to the
    * left edge; the active button follows the scroll. */
   function calendarScroll(root) {
