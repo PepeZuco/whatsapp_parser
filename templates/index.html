@@ -311,6 +311,25 @@ select:focus,.search:focus-within{border-color:var(--accent)}
 .ros-menu{position:relative}
 .ros-menu .menu-list{max-height:210px;overflow-y:auto;right:0}
 .ros-menu .menu-list button{font-size:12px;padding:6px 9px}
+
+.ros-edit{margin:0 11px 8px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--card);padding:11px 12px 12px}
+.ros-edit .l{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px}
+.ros-sws{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-bottom:12px}
+@media(max-width:480px){.ros-sws{grid-template-columns:repeat(6,1fr)}}
+.ros-sw{aspect-ratio:1;border-radius:50%;border:none;padding:0;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.15)}
+[data-theme="light"] .ros-sw{box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+.ros-sw.sel{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--accent)}
+.ros-sw.taken{opacity:.45}
+.ros-prev{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);position:relative;overflow:hidden}
+.ros-prev::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--hue)}
+.ros-prev-h{display:flex;align-items:center;gap:10px;padding:10px 12px 8px}
+.ros-prev-h .n{font-size:13px;font-weight:700}
+.ros-prev-h .s{margin-left:auto;text-align:right}
+.ros-prev-h .s .v{font-size:18px;font-weight:800;color:var(--hue);line-height:1;font-variant-numeric:tabular-nums}
+.ros-prev-h .s .l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:2px}
+.ros-prev .avatar{width:32px;height:32px;font-size:13px}
+.ros-prev-strip{display:flex;height:20px;border-top:1px solid var(--border)}
+.ros-prev-strip div{display:flex;align-items:center;padding:0 7px;font:700 9.5px var(--font);color:#0c0c0c;overflow:hidden;white-space:nowrap}
 </style>
 </head>
 <body>

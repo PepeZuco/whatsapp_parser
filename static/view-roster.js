@@ -68,12 +68,51 @@ const ChatRosterView = (function (App, Roster) {
     return e.src.map(s => per[s]);
   }
 
+  /* The colour editor: twelve slots and a live People card. The card carries
+   * every contrast-critical use of a person's colour at once — filled avatar,
+   * colour-as-text percentage, labelled share segment — so what you see in it
+   * is what the People tab will draw. */
+  function editor(e, i, count, sel) {
+    const { esc, t, num, pct } = App;
+    const taken = Roster.takenSlots(local.draft, i);
+    const owner = slot => {
+      const o = local.draft.entries.find((x, j) => j !== i && x.color === slot);
+      return o ? o.name : '';
+    };
+    const sws = Array.from({ length: Roster.SLOTS }, (_, s) =>
+      `<button class="ros-sw ${s === e.color ? 'sel' : ''} ${taken.has(s) && s !== e.color ? 'taken' : ''}"
+         data-slot="${s}" data-for="${i}" style="background:${App.slotColor(s)}"
+         title="${taken.has(s) && s !== e.color ? esc(t('roster_taken', { name: owner(s) })) : ''}"
+         aria-label="${s + 1}"></button>`).join('');
+    const name = e.name;
+    // Excluded people are dropped from the analysis, so the People tab divides by
+    // the selected total — the preview must match it. For an entry that is
+    // currently off, add its own messages back, so the preview answers "how would
+    // this person look if I included them" rather than showing a share of a set
+    // they are not in.
+    const denom = e.on ? sel : sel + count;
+    return `<div class="ros-edit" style="--hue:${App.slotColor(e.color)}">
+      <div class="l">${esc(t('roster_colour_for', { name }))}</div>
+      <div class="ros-sws">${sws}</div>
+      <div class="ros-prev" style="--hue:${App.slotColor(e.color)}">
+        <div class="ros-prev-h">
+          <div class="avatar">${esc([...name][0] || '?')}</div>
+          <div style="min-width:0"><div class="n">${esc(name)}</div></div>
+          <div class="s"><div class="v">${esc(pct(denom ? count / denom : 0))}</div><div class="l">${esc(t('of_messages'))}</div></div>
+        </div>
+        <div class="ros-prev-strip"><div style="background:${App.slotColor(e.color)};width:100%">${esc(name)} · ${esc(num(count))}</div></div>
+      </div>
+      <div class="note"><i class="ti ti-info-circle"></i>${esc(t('roster_preview_note', { name }))}</div></div>`;
+  }
+
   function render() {
     const { esc, t, num } = App;
     const c = Roster.counts(chat(), local.draft);
     const max = Math.max(...c.perEntry, 1);
-    const list = local.draft.entries.map((e, i) =>
-      e.src.length > 1 ? group(e, i, c.perEntry[i]) : row(e, i, c.perEntry[i], max)).join('');
+    const list = local.draft.entries.map((e, i) => {
+      const main = e.src.length > 1 ? group(e, i, c.perEntry[i]) : row(e, i, c.perEntry[i], max);
+      return main + (local.open === i ? editor(e, i, c.perEntry[i], c.messages) : '');
+    }).join('');
     $('rosterModal').innerHTML = `
       <div class="modal-h">
         <div class="ic"><i class="ti ti-users-group"></i></div>
@@ -116,6 +155,18 @@ const ChatRosterView = (function (App, Roster) {
     $('rosReset').addEventListener('click', () => { local.open = -1; edit(() => Roster.initial(chat()), '#rosReset'); });
     $('rosApply').addEventListener('click', apply);
 
+    m.querySelectorAll('[data-color]').forEach(el =>
+      el.addEventListener('click', () => {
+        const i = +el.dataset.color;
+        local.open = local.open === i ? -1 : i;
+        local.menu = -1;
+        render();
+      }));
+    m.querySelectorAll('[data-slot]').forEach(el =>
+      el.addEventListener('click', () => {
+        const i = +el.dataset.for, slot = +el.dataset.slot;
+        edit(r => Roster.setColor(r, i, slot), '[data-slot="' + slot + '"][data-for="' + i + '"]');
+      }));
     m.querySelectorAll('[data-toggle]').forEach(el =>
       el.addEventListener('change', () => edit(r => Roster.toggle(r, +el.dataset.toggle), '[data-toggle="' + el.dataset.toggle + '"]')));
     m.querySelectorAll('[data-split]').forEach(el =>
