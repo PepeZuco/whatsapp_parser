@@ -163,6 +163,21 @@ test('merging an entry into itself is a no-op', () => {
   assert.strictEqual(out.entries.length, 3);
 });
 
+test('mergedIndex tracks the surviving entry through the splice', () => {
+  assert.strictEqual(Roster.mergedIndex(1, 4), 1);   // other above target: unmoved
+  assert.strictEqual(Roster.mergedIndex(4, 3), 3);   // adjacent below: shifts one
+  assert.strictEqual(Roster.mergedIndex(4, 0), 3);   // far below: still one — min() would say 0
+});
+
+test('mergedIndex agrees with where merge actually puts the entry', () => {
+  const six = raw(['A', 'B', 'C', 'D', 'E', 'F'], [['2024-01-01 09:00', 0]]);
+  for (const [t, o] of [[4, 0], [1, 4], [4, 3], [0, 5], [5, 0]]) {
+    const r = Roster.merge(Roster.initial(six), t, o);
+    const merged = r.entries.findIndex(e => e.src.length > 1);
+    assert.strictEqual(Roster.mergedIndex(t, o), merged, `target=${t} other=${o}`);
+  }
+});
+
 test('split restores original names in src order, in place', () => {
   let r = Roster.merge(Roster.initial(CHAT), 0, 2);   // Ana + Caio
   r = Roster.rename(r, 0, 'Ana S.', CHAT);

@@ -213,8 +213,8 @@ const ChatRosterView = (function (App, Roster) {
     m.querySelectorAll('[data-merge]').forEach(el =>
       el.addEventListener('click', () => {
         local.open = -1;
-        const into = +el.dataset.into;
-        edit(r => Roster.merge(r, into, +el.dataset.merge), '[data-split="' + into + '"]');
+        const into = +el.dataset.into, from = +el.dataset.merge;
+        edit(r => Roster.merge(r, into, from), '[data-split="' + Roster.mergedIndex(into, from) + '"]');
       }));
     m.querySelectorAll('.ros-name').forEach(el => {
       el.addEventListener('change', () => {
@@ -229,19 +229,22 @@ const ChatRosterView = (function (App, Roster) {
         const keep = +el.dataset.keep, drop = +el.dataset.drop;
         local.dismissed.add(suggKey(keep, drop));
         local.open = -1;
-        edit(r => {
-          const target = Roster.entryOf(r, keep), other = Roster.entryOf(r, drop);
-          if (target < 0 || other < 0 || target === other) return r;
-          // merge() splices `other` out of the entries array: when other < target
-          // every later index shifts down by one, so the surviving entry always
-          // ends up at the lower of the two indices, regardless of which side of
-          // the pair the user chose to keep.
-          return Roster.rename(Roster.merge(r, target, other), Math.min(target, other),
-                               chat().people[keep], chat());
-        });
+        // Computed against local.draft up front, not inside the edit() reducer:
+        // edit() hands the reducer that same draft synchronously, so the index
+        // is identical either way, and knowing it here lets the refocus selector
+        // name the merged entry instead of falling through to the Tab trap.
+        const target = Roster.entryOf(local.draft, keep), other = Roster.entryOf(local.draft, drop);
+        if (target < 0 || other < 0 || target === other) { render(); return; }
+        const idx = Roster.mergedIndex(target, other);
+        edit(r => Roster.rename(Roster.merge(r, target, other), idx, chat().people[keep], chat()),
+             `[data-split="${idx}"], [data-toggle="${idx}"]`);
       }));
     m.querySelectorAll('[data-reject]').forEach(el =>
-      el.addEventListener('click', () => { local.dismissed.add(el.dataset.reject); render(); }));
+      el.addEventListener('click', () => {
+        local.dismissed.add(el.dataset.reject);
+        local.refocus = '.ros-sugg button, [data-toggle]';
+        render();
+      }));
 
     m.querySelectorAll('.ros-row').forEach(el => {
       el.addEventListener('dragstart', e => {
@@ -258,7 +261,7 @@ const ChatRosterView = (function (App, Roster) {
         const from = +e.dataTransfer.getData('text/plain'), into = +el.dataset.i;
         if (Number.isFinite(from) && from !== into) {
           local.open = -1;
-          edit(r => Roster.merge(r, into, from), '[data-split="' + into + '"]');
+          edit(r => Roster.merge(r, into, from), '[data-split="' + Roster.mergedIndex(into, from) + '"]');
         }
       });
     });
