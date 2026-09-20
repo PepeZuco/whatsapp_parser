@@ -244,8 +244,9 @@ Structure, top to bottom, as approved in `popup-v1.html`:
 - `role="dialog"`, `aria-modal="true"`, focus moved into the modal on open and
   restored on close, Tab trapped inside it.
 - Esc closes the modal, which means **cancel**: the roster reverts to what it
-  was when the modal opened, consistent with the Esc handling
-  `tests/test_app_esc.js` already covers.
+  was when the modal opened. Nothing in the repo tests the Escape key —
+  `tests/test_app_esc.js`, despite the name, tests `App.esc()`, the HTML-escaping
+  helper. Esc is covered only by the manual checklist.
 - On first load, cancelling still applies the default roster, so the user
   always lands on the charts.
 
