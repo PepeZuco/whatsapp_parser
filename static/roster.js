@@ -20,6 +20,11 @@ const ChatRoster = (function () {
 
   const SLOTS = 12;
   const DAY = 86400;
+  const MAX_SUGGESTIONS = 3;
+  const REPLY_MAX = 12 * 3600;   // the window people.js already calls a reply
+  const OVERLAP_MAX = 0.05;      // spans may share at most 5% of their union
+  const NAME_SIM_MIN = 0.85;
+  const PHONE = /^\+?\d[\d\s()\-.]{6,}$/;
 
   class RosterError extends Error {
     constructor(code) { super(code); this.code = code; }
@@ -147,8 +152,116 @@ const ChatRoster = (function () {
     return i >= 0 && i === entryOf(roster, b);
   }
 
+  // ---------- probable duplicates ----------
+
+  function normalise(s) {
+    return String(s).normalize('NFD').replace(/\p{Diacritic}/gu, '')
+      .toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function isPhone(name) { return PHONE.test(String(name).trim()); }
+
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length || !b.length) return Math.max(a.length, b.length);
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
+                          prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  function similarity(a, b) {
+    const max = Math.max(a.length, b.length);
+    return max ? 1 - levenshtein(a, b) / max : 1;
+  }
+
+  function wordSubset(a, b) {
+    const A = a.split(' '), B = b.split(' ');
+    const sub = (x, y) => x.every(w => y.indexOf(w) >= 0);
+    return sub(A, B) || sub(B, A);
+  }
+
+  /* Why these two names might belong to one person, or null. Two phone numbers
+   * say nothing either way — near-identical numbers are usually two people. */
+  function nameAffinity(a, b) {
+    const pa = isPhone(a), pb = isPhone(b);
+    if (pa && pb) return null;
+    if (pa !== pb) return 'phone_number';
+    const na = normalise(a), nb = normalise(b);
+    if (na === nb || wordSubset(na, nb) || similarity(na, nb) >= NAME_SIM_MIN) return 'similar_name';
+    return null;
+  }
+
+  /* First and last day each person wrote. */
+  function spans(chat) {
+    const out = chat.people.map(() => null);
+    for (const r of chat.rows) {
+      const d = Math.floor(r[0] / DAY), s = out[r[1]];
+      if (!s) out[r[1]] = { lo: d, hi: d };
+      else { if (d < s.lo) s.lo = d; if (d > s.hi) s.hi = d; }
+    }
+    return out;
+  }
+
+  /* Overlap measured against the SHORTER span, never the union. Against the
+   * union, anyone long-tenured looks disjoint from anyone short-lived — a person
+   * writing for 18 months and a number appearing for 2 days at the end overlap
+   * by under 1% of the union, and would be offered as the same person. Against
+   * the shorter span those 2 days are 100%, so only a name that goes quiet
+   * before the other starts can pass. */
+  function overlapRatio(a, b) {
+    if (!a || !b) return 1;
+    const overlap = Math.max(0, Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) + 1);
+    const shorter = Math.min(a.hi - a.lo + 1, b.hi - b.lo + 1);
+    return shorter > 0 ? overlap / shorter : 1;
+  }
+
+  /* Pairs that ever answered each other inside REPLY_MAX. Relies on rows being
+   * chronological, the same assumption parse.py makes for start/end; the gap >= 0
+   * guard keeps unsorted input from reading a backward jump as an exchange. */
+  function exchanged(chat) {
+    const n = chat.people.length, seen = new Set();
+    for (let i = 1; i < chat.rows.length; i++) {
+      const prev = chat.rows[i - 1], cur = chat.rows[i];
+      const gap = cur[0] - prev[0];
+      if (prev[1] !== cur[1] && gap >= 0 && gap < REPLY_MAX) {
+        seen.add(Math.min(prev[1], cur[1]) * n + Math.max(prev[1], cur[1]));
+      }
+    }
+    return seen;
+  }
+
+  /* Pairs that look like one person twice. Conservative on purpose: accepting a
+   * suggestion is one click and silently rewrites every number in the app, so a
+   * false positive costs more than a miss. */
+  function suggest(chat) {
+    const n = chat.people.length;
+    if (n < 2) return [];
+    const sp = spans(chat), ex = exchanged(chat);
+    const c = counts(chat, initial(chat)).perEntry;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        if (ex.has(i * n + j)) continue;
+        const affinity = nameAffinity(chat.people[i], chat.people[j]);
+        if (!affinity) continue;
+        if (overlapRatio(sp[i], sp[j]) > OVERLAP_MAX) continue;
+        const [a, b] = c[i] >= c[j] ? [i, j] : [j, i];
+        out.push({ a, b, reasons: [affinity, 'span_disjoint', 'no_replies'] });
+      }
+    }
+    return out.sort((x, y) => (c[y.a] + c[y.b]) - (c[x.a] + c[x.b])).slice(0, MAX_SUGGESTIONS);
+  }
+
   return { SLOTS, RosterError, clone, initial, apply, counts,
-           toggle, setColor, rename, merge, split, takenSlots, entryOf, sameEntry };
+           toggle, setColor, rename, merge, split, takenSlots, entryOf, sameEntry,
+           suggest, isPhone, normalise, similarity };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ChatRoster;

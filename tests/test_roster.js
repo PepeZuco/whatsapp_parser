@@ -197,3 +197,118 @@ test('entryOf and sameEntry locate a source index after merging', () => {
   assert.strictEqual(Roster.sameEntry(r, 0, 2), true);
   assert.strictEqual(Roster.sameEntry(r, 0, 1), false);
 });
+
+test('isPhone recognises exported numbers but not ordinary names', () => {
+  assert.strictEqual(Roster.isPhone('+55 11 98877-1234'), true);
+  assert.strictEqual(Roster.isPhone('5511988771234'), true);
+  assert.strictEqual(Roster.isPhone('+1 (555) 010-9999'), true);
+  assert.strictEqual(Roster.isPhone('Ana'), false);
+  assert.strictEqual(Roster.isPhone('Ana 2'), false);
+});
+
+test('normalise folds case, accents and runs of whitespace', () => {
+  assert.strictEqual(Roster.normalise('  JOSÉ   da Silva '), 'jose da silva');
+});
+
+test('similarity is 1 for equal strings and low for unrelated ones', () => {
+  assert.strictEqual(Roster.similarity('ana', 'ana'), 1);
+  assert.ok(Roster.similarity('ana', 'bia') < 0.5);
+  assert.ok(Roster.similarity('jenni', 'jenny') >= 0.8);
+});
+
+// Caio stops writing, then a number appears; they never answer each other.
+const NEW_PHONE = raw(['Ana', 'Caio', '+55 11 98877-1234'], [
+  ['2024-01-05 09:00', 0], ['2024-01-05 09:01', 1],
+  ['2024-02-01 23:00', 1], ['2024-02-02 00:30', 1],
+  ['2024-06-01 23:00', 2], ['2024-06-02 00:10', 2],
+  ['2024-06-03 09:00', 0],
+]);
+
+test('suggest flags a saved name and the number that replaces it', () => {
+  const s = Roster.suggest(NEW_PHONE);
+  assert.strictEqual(s.length, 1);
+  assert.strictEqual(NEW_PHONE.people[s[0].a], 'Caio');
+  assert.strictEqual(NEW_PHONE.people[s[0].b], '+55 11 98877-1234');
+  assert.ok(s[0].reasons.includes('phone_number'));
+  assert.ok(s[0].reasons.includes('span_disjoint'));
+  assert.ok(s[0].reasons.includes('no_replies'));
+});
+
+test('suggest orders the pair so the busier identity comes first', () => {
+  const s = Roster.suggest(NEW_PHONE);
+  const c = Roster.counts(NEW_PHONE, Roster.initial(NEW_PHONE)).perEntry;
+  assert.ok(c[s[0].a] >= c[s[0].b]);
+});
+
+test('suggest flags a name that is a subset of another name', () => {
+  const chat = raw(['Ana', 'Ana Souza'], [
+    ['2024-01-01 09:00', 0], ['2024-02-01 09:00', 0],
+    ['2024-09-01 09:00', 1], ['2024-09-02 09:00', 1],
+  ]);
+  const s = Roster.suggest(chat);
+  assert.strictEqual(s.length, 1);
+  assert.ok(s[0].reasons.includes('similar_name'));
+});
+
+test('suggest ignores accents and case when comparing names', () => {
+  const chat = raw(['José', 'jose'], [
+    ['2024-01-01 09:00', 0], ['2024-02-01 09:00', 0],
+    ['2024-09-01 09:00', 1], ['2024-09-02 09:00', 1],
+  ]);
+  assert.strictEqual(Roster.suggest(chat).length, 1);
+});
+
+test('suggest stays silent when the two reply to each other', () => {
+  const chat = raw(['Caio', '+55 11 98877-1234'], [
+    ['2024-01-01 09:00', 0], ['2024-01-01 09:02', 1],
+    ['2024-09-01 09:00', 1],
+  ]);
+  assert.deepStrictEqual(Roster.suggest(chat), []);
+});
+
+test('suggest stays silent when the two were active over the same period', () => {
+  const chat = raw(['Ana', 'Ana Souza'], [
+    ['2024-01-01 09:00', 0], ['2024-06-01 09:00', 0],
+    ['2024-02-01 18:00', 1], ['2024-05-01 18:00', 1],
+  ]);
+  assert.deepStrictEqual(Roster.suggest(chat), []);
+});
+
+// The case a union-based overlap ratio gets wrong: Ana writes across the whole
+// chat, the number only at the end, so their overlap is a rounding error against
+// the union but the whole of the number's own span.
+test('suggest does not pair a long-tenured person with a short-lived number', () => {
+  const chat = raw(['Ana', '+55 11 98877-1234'], [
+    ['2024-01-05 09:00', 0], ['2024-03-01 09:00', 0],
+    ['2024-06-01 23:00', 1], ['2024-06-02 00:10', 1],
+    ['2024-06-03 09:00', 0],
+  ]);
+  assert.deepStrictEqual(Roster.suggest(chat), []);
+});
+
+test('suggest stays silent for two plainly different names', () => {
+  const chat = raw(['Ana', 'Bia'], [
+    ['2024-01-01 09:00', 0], ['2024-02-01 09:00', 0],
+    ['2024-09-01 09:00', 1], ['2024-09-02 09:00', 1],
+  ]);
+  assert.deepStrictEqual(Roster.suggest(chat), []);
+});
+
+test('suggest tells nothing from two different phone numbers', () => {
+  const chat = raw(['+55 11 98877-1234', '+55 11 98877-1235'], [
+    ['2024-01-01 09:00', 0], ['2024-02-01 09:00', 0],
+    ['2024-09-01 09:00', 1], ['2024-09-02 09:00', 1],
+  ]);
+  assert.deepStrictEqual(Roster.suggest(chat), []);
+});
+
+test('suggest returns at most three pairs and nothing for a lone person', () => {
+  const rows = [], people = [];
+  for (let i = 0; i < 10; i++) {
+    people.push('P' + i, 'P' + i + ' Silva');
+    rows.push([`2024-01-0${(i % 9) + 1} 09:00`, i * 2], [`2024-01-0${(i % 9) + 1} 10:00`, i * 2],
+              [`2025-01-0${(i % 9) + 1} 09:00`, i * 2 + 1], [`2025-01-0${(i % 9) + 1} 10:00`, i * 2 + 1]);
+  }
+  assert.strictEqual(Roster.suggest(raw(people, rows)).length, 3);
+  assert.deepStrictEqual(Roster.suggest(raw(['Ana'], [['2024-01-01 09:00', 0]])), []);
+});
