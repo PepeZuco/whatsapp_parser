@@ -269,6 +269,21 @@ test('suggest orders the pair so the busier identity comes first', () => {
   assert.ok(c[s[0].a] >= c[s[0].b]);
 });
 
+test('suggest pairs by message count, which need not match time order', () => {
+  // Ana wrote twice in January; Ana Souza five times in June. Count order puts
+  // Ana Souza first, time order puts Ana first — so no reason string may infer
+  // one from the other.
+  const chat = raw(['Ana', 'Ana Souza'], [
+    ['2024-01-01 09:00', 0], ['2024-01-02 09:00', 0],
+    ['2024-06-01 09:00', 1], ['2024-06-02 09:00', 1], ['2024-06-03 09:00', 1],
+    ['2024-06-04 09:00', 1], ['2024-06-05 09:00', 1],
+  ]);
+  const s = Roster.suggest(chat);
+  assert.strictEqual(s.length, 1);
+  assert.strictEqual(chat.people[s[0].a], 'Ana Souza');  // busier, but wrote later
+  assert.ok(s[0].reasons.includes('span_disjoint'));
+});
+
 test('suggest flags a name that is a subset of another name', () => {
   const chat = raw(['Ana', 'Ana Souza'], [
     ['2024-01-01 09:00', 0], ['2024-02-01 09:00', 0],

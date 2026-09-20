@@ -153,7 +153,7 @@ const ChatRosterView = (function (App, Roster) {
         <button class="btn" id="rosReset">${esc(t('roster_reset'))}</button>
         <span class="sp"></span>
         <span class="cnt">${c.on ? esc(t('roster_footer', { n: num(c.on), msgs: num(c.messages) })) : esc(t('roster_none_selected'))}</span>
-        <button class="btn btn-primary" id="rosApply" ${c.on ? '' : 'disabled'}>${esc(t('roster_analyse'))}</button>
+        <button class="btn btn-primary" id="rosApply" ${c.messages ? '' : 'disabled'}>${esc(t('roster_analyse'))}</button>
       </div>`;
     wire();
     if (local.refocus) {
@@ -176,7 +176,11 @@ const ChatRosterView = (function (App, Roster) {
   function wire() {
     const m = $('rosterModal');
     $('rosClose').addEventListener('click', close);
-    $('rosReset').addEventListener('click', () => { local.open = -1; edit(() => Roster.initial(chat()), '#rosReset'); });
+    $('rosReset').addEventListener('click', () => {
+      local.open = -1;
+      local.dismissed.clear();   // Reset undoes banner merges too, so re-offer them
+      edit(() => Roster.initial(chat()), '#rosReset');
+    });
     $('rosApply').addEventListener('click', apply);
 
     m.querySelectorAll('[data-color]').forEach(el =>
@@ -254,12 +258,20 @@ const ChatRosterView = (function (App, Roster) {
       });
       el.addEventListener('dragend', () => el.classList.remove('drag'));
       el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drop'); });
-      el.addEventListener('dragleave', () => el.classList.remove('drop'));
+      el.addEventListener('dragleave', e => {
+        // dragleave also fires when the pointer crosses onto a child element.
+        if (!el.contains(e.relatedTarget)) el.classList.remove('drop');
+      });
       el.addEventListener('drop', e => {
         e.preventDefault();
         el.classList.remove('drop');
-        const from = +e.dataTransfer.getData('text/plain'), into = +el.dataset.i;
-        if (Number.isFinite(from) && from !== into) {
+        // A drag with no text/plain payload (a file, an image) yields '', and
+        // +'' is 0 — which would silently merge entry 0 into this row. Require a
+        // real roster index.
+        const raw = e.dataTransfer.getData('text/plain');
+        const from = raw.trim() === '' ? NaN : Number(raw);
+        const into = +el.dataset.i;
+        if (Number.isInteger(from) && from >= 0 && from < local.draft.entries.length && from !== into) {
           local.open = -1;
           edit(r => Roster.merge(r, into, from), '[data-split="' + Roster.mergedIndex(into, from) + '"]');
         }
@@ -268,8 +280,12 @@ const ChatRosterView = (function (App, Roster) {
   }
 
   function apply() {
-    if (!Roster.counts(chat(), local.draft).on) return;
-    App.state.roster = local.draft;
+    // Guard on surviving messages, the same predicate Roster.apply throws on —
+    // not on entry count, which only coincides because parse.py lists a person
+    // solely when they have messages.
+    if (!Roster.counts(chat(), local.draft).messages) return;
+    const draft = local.draft;
+    App.state.roster = draft;
     App.applyRoster();
     close();
   }
