@@ -102,7 +102,19 @@ header{display:flex;align-items:center;justify-content:space-between;padding:28p
 .filters input[type=date]{width:100%;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text);padding:0 6px;font:12px var(--font-mono);color-scheme:dark}
 [data-theme="light"] .filters input[type=date]{color-scheme:light}
 .filters-fab{display:none}
+.filters .collapse{margin-left:auto;display:flex;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0}
+.filters .collapse:hover{color:var(--text)}
+@media(min-width:901px){
+  .page{transition:grid-template-columns .2s}
+  body.filters-collapsed .page{grid-template-columns:48px minmax(0,1fr)}
+  body.filters-collapsed .filters{padding:14px 0;overflow:hidden}
+  body.filters-collapsed .filters>:not(.lbl){display:none}
+  body.filters-collapsed .filters .lbl{flex-direction:column;gap:12px;margin:0}
+  body.filters-collapsed .filters .lbl>span{display:none}
+  body.filters-collapsed .filters .collapse{margin:0;transform:scaleX(-1)}
+}
 @media(max-width:900px){
+  .filters .collapse{display:none}
   .page{display:block}
   .filters{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:80vh;z-index:40;border-radius:12px 12px 0 0;transform:translateY(105%);transition:transform .25s}
   body.filters-open .filters{transform:none}
@@ -443,7 +455,7 @@ select:focus,.search:focus-within{border-color:var(--accent)}
 
     <div class="page">
     <aside class="filters" id="filters">
-      <div class="lbl"><i class="ti ti-calendar"></i><span data-i18n="range"></span><button class="close" id="filtersClose" aria-label="Close"><i class="ti ti-x"></i></button></div>
+      <div class="lbl"><i class="ti ti-calendar"></i><span data-i18n="range"></span><button class="collapse" id="filtersCollapse" aria-label="Collapse filters"><i class="ti ti-layout-sidebar-left-collapse"></i></button><button class="close" id="filtersClose" aria-label="Close"><i class="ti ti-x"></i></button></div>
       <span class="range-info" id="rangeInfo"></span>
       <span class="seg" id="presets"></span>
       <div class="hist" id="hist"></div>

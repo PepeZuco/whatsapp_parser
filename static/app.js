@@ -445,6 +445,14 @@ const App = (function (R, Roster) {
     const sheet = open => document.body.classList.toggle('filters-open', open);
     $('filtersFab').addEventListener('click', () => sheet(true));
     $('filtersClose').addEventListener('click', () => sheet(false));
+    const collapse = on => {
+      document.body.classList.toggle('filters-collapsed', on);
+      $('filtersCollapse').setAttribute('aria-label', on ? 'Expand filters' : 'Collapse filters');
+      try { localStorage.setItem('filtersCollapsed', on ? '1' : ''); } catch (e) {}
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 220);
+    };
+    $('filtersCollapse').addEventListener('click', () => collapse(!document.body.classList.contains('filters-collapsed')));
+    try { if (localStorage.getItem('filtersCollapsed')) collapse(true); } catch (e) {}
     const onDate = () => setRange(R.dayOfIso($('fromIn').value), R.dayOfIso($('toIn').value));
     $('fromIn').addEventListener('change', onDate);
     $('toIn').addEventListener('change', onDate);
