@@ -26,8 +26,9 @@
       [t('w_fastest'), m.fastest ? m.fastest.name : '—', m.fastest ? fmtDuration(m.fastest.sec) : ''],
     ];
     if (m.topWord) cells.push([t('w_top_word'), `"${m.topWord}"`, '']);
-    const colors = Wr.PALETTE.people;
-    const split = m.split.map(s => ({ name: s.name, pct: s.pct, color: colors[s.p % 6] }));
+    const colors = Wr.PALETTE.people, slots = App.state.chat.colors;
+    const slot = p => (slots && slots[p] != null ? slots[p] : p) % colors.length;
+    const split = m.split.map(s => ({ name: s.name, pct: s.pct, color: colors[slot(s.p)] }));
     const foot = s => s ? `${s.name} ${Math.round(s.pct * 100)}%` : '';
     return {
       kicker: m.period === 'all' ? t('w_all_time') : t('w_year_in_chat', { year: m.period }),

@@ -7,19 +7,23 @@
  * Only the visible tab renders; the others are marked dirty and render when
  * opened, so a range change on a 100k chat never draws five tabs. */
 
-const App = (function (R) {
+const App = (function (R, Roster) {
 
   const TABS = ['overview', 'activity', 'people', 'messages', 'wrapped'];
   const $ = id => document.getElementById(id);
 
   const state = {
-    chat: null,      // API response
+    raw: null,       // the /api/parse response, never mutated
+    roster: null,    // the user's configuration over it
+    suggestions: [], // probable duplicate identities, computed once per upload
+    chat: null,      // raw projected through roster — shaped like the API response
     msgs: [],        // every prepared message
     view: [],        // messages in the date range
     first: 0, last: 0, from: 0, to: 0,
     presets: [],
     tab: 'overview',
     lang: 'en',
+    hashRange: null, // from/to decoded from the URL hash, consumed by the first applyRoster
   };
   const views = {};
   const dirty = new Set(TABS);
@@ -175,31 +179,47 @@ const App = (function (R) {
   // ---------- loading a chat ----------
 
   function load(chat) {
-    state.chat = chat;
-    state.msgs = R.prepare(chat);
-    state.first = R.dayOfIso(chat.start);
-    state.last = R.dayOfIso(chat.end);
-    state.presets = R.presets(state.first, state.last);
+    state.raw = chat;
+    state.roster = Roster.initial(chat);
+    state.suggestions = Roster.suggest(chat);
     const h = R.decodeHash(location.hash);
     state.lang = h.lang || chat.language || state.lang;
     state.tab = TABS.includes(h.tab) ? h.tab : 'overview';
-    const v = R.validate(h.from ?? state.first, h.to ?? state.last, state.first, state.last);
-    state.from = v.error ? state.first : v.from;
-    state.to = v.error ? state.last : v.to;
-    state.view = R.filter(state.msgs, state.from, state.to);
-    Object.keys(views).forEach(k => views[k].reset && views[k].reset());
+    state.hashRange = { from: h.from, to: h.to };
     $('landing').classList.add('hidden');
     $('appView').classList.remove('hidden');
     document.querySelectorAll('.chat-only').forEach(el => el.classList.remove('hidden'));
+    applyRoster();
+    showTab(state.tab);
+  }
+
+  /* Project the raw chat through the current roster and rebuild everything that
+   * hangs off it. Called on load and whenever the roster changes; the range is
+   * re-validated because excluding people can shrink the chat's span. */
+  function applyRoster() {
+    state.chat = Roster.apply(state.raw, state.roster);
+    state.msgs = R.prepare(state.chat);
+    state.first = R.dayOfIso(state.chat.start);
+    state.last = R.dayOfIso(state.chat.end);
+    state.presets = R.presets(state.first, state.last);
+    const want = state.hashRange || { from: state.from, to: state.to };
+    state.hashRange = null;
+    const v = R.validate(want.from ?? state.first, want.to ?? state.last, state.first, state.last);
+    state.from = v.error ? state.first : v.from;
+    state.to = v.error ? state.last : v.to;
+    if (state.from > state.to) { state.from = state.first; state.to = state.last; }
+    state.view = R.filter(state.msgs, state.from, state.to);
+    Object.keys(views).forEach(k => views[k].reset && views[k].reset());
     applyI18n();
     renderHeader();
     renderDatebar();
     invalidate();
-    showTab(state.tab);
+    writeHash();
   }
 
   function unload() {
-    state.chat = null;
+    state.chat = state.raw = state.roster = null;
+    state.suggestions = [];
     state.msgs = state.view = [];
     $('appView').classList.add('hidden');
     $('landing').classList.remove('hidden');
@@ -214,8 +234,10 @@ const App = (function (R) {
     if (!state.chat) { sub.textContent = t('tagline'); return; }
     const c = state.chat;
     const who = c.title || (c.people.length <= 3 ? c.people.join(' & ') : t('n_people', { n: c.people.length }));
+    const off = state.roster ? state.roster.entries.filter(e => !e.on).length : 0;
     sub.innerHTML = `<b>${esc(who)}</b> · ${esc(t('n_messages', { n: num(state.msgs.length) }))} · ` +
-      `${esc(t(c.platform === 'ios' ? 'iphone_export' : 'android_export'))} · ${esc(t('lang_' + c.language))}`;
+      `${esc(t(c.platform === 'ios' ? 'iphone_export' : 'android_export'))} · ${esc(t('lang_' + c.language))}` +
+      (off ? ` · ${esc(t('roster_excluded', { n: num(off) }))}` : '');
   }
 
   // ---------- date bar ----------
@@ -336,7 +358,8 @@ const App = (function (R) {
   }
 
   return { state, t, esc, num, pct, fmtDay, fmtTime, weekdayName, fmtDuration, color, colorValue, slotColor, slotColorValue, name,
-           showTip, hideTip, emptyState, register, openMessages, setRange, boot, load };
-})(typeof ChatRange !== 'undefined' ? ChatRange : require('./range.js'));
+           showTip, hideTip, emptyState, register, openMessages, setRange, boot, load, applyRoster };
+})(typeof ChatRange !== 'undefined' ? ChatRange : require('./range.js'),
+   typeof ChatRoster !== 'undefined' ? ChatRoster : require('./roster.js'));
 
 if (typeof module !== 'undefined' && module.exports) module.exports = App;
