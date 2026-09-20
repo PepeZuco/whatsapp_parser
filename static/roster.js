@@ -22,7 +22,7 @@ const ChatRoster = (function () {
   const DAY = 86400;
   const MAX_SUGGESTIONS = 3;
   const REPLY_MAX = 12 * 3600;   // the window people.js already calls a reply
-  const OVERLAP_MAX = 0.05;      // spans may share at most 5% of their union
+  const OVERLAP_MAX = 0.05;      // of the SHORTER span — never of their union
   const NAME_SIM_MIN = 0.85;
   const PHONE = /^\+?\d[\d\s()\-.]{6,}$/;
 

@@ -312,3 +312,19 @@ test('suggest returns at most three pairs and nothing for a lone person', () => 
   assert.strictEqual(Roster.suggest(raw(people, rows)).length, 3);
   assert.deepStrictEqual(Roster.suggest(raw(['Ana'], [['2024-01-01 09:00', 0]])), []);
 });
+
+// The gap >= 0 guard in exchanged(): rows here are deliberately out of order, so
+// row 2 follows row 1 with a NEGATIVE gap. Without the guard that backward jump
+// reads as a reply between the two identities and silently suppresses a valid
+// suggestion; with it, the pair is still offered.
+test('suggest is not fooled by a backward time jump in unsorted rows', () => {
+  const chat = raw(['Caio', '+55 11 98877-1234'], [
+    ['2024-09-01 10:00', 1],
+    ['2024-01-01 10:00', 0],
+    ['2024-01-02 10:00', 0],
+    ['2024-09-02 10:00', 1],
+  ]);
+  const s = Roster.suggest(chat);
+  assert.strictEqual(s.length, 1);
+  assert.ok(s[0].reasons.includes('phone_number'));
+});
