@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Filters sidebar mockup</title>
+<style>
+:root{--bg:#0c0c0c;--surface:#141414;--card:#181818;--border:#3A2C1D;--text:#e8e8e0;--muted:#555;--label:#9a9a92;--accent:#5FBF7A;--accent-rgb:95,191,122;--cell0:#1a1a1a;--font:'Inter',system-ui,sans-serif;--mono:'Courier Prime',monospace;--r:4px}
+:root.light{--bg:#e1ddd3;--surface:#f0ede6;--card:#f0ede6;--border:#CBB596;--text:#1a1a18;--muted:#827e74;--label:#63635b;--accent:#3d8a55;--accent-rgb:61,138,85;--cell0:#e6e2d8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 var(--font)}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface)}
+.app-name{font-weight:600}.chat-sub{color:var(--label);font-size:12px}
+.btn{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:6px 10px;font:inherit;cursor:pointer}
+.layout{display:grid;grid-template-columns:272px 1fr;align-items:start}
+aside{position:sticky;top:0;height:100vh;overflow:auto;padding:16px;border-right:1px solid var(--border);background:var(--surface)}
+aside h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--label);margin:20px 0 8px;font-weight:600}
+aside h3:first-of-type{margin-top:0}
+.summary{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-family:var(--mono);font-size:12px;color:var(--label)}
+.summary b{display:block;color:var(--accent);font-size:18px;font-family:var(--font)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--border);background:var(--card);color:var(--label);border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer}
+.chip.on{background:rgba(var(--accent-rgb),.15);border-color:var(--accent);color:var(--accent)}
+.dates{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.dates label{font-size:11px;color:var(--label)}
+.dates input{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:5px 6px;font:inherit;font-size:12px;color-scheme:dark}
+.hist{display:flex;align-items:flex-end;gap:2px;height:44px;margin-top:12px}
+.hist i{flex:1;background:var(--cell0);border-radius:1px}.hist i.in{background:rgba(var(--accent-rgb),.55)}
+.track{position:relative;height:4px;background:var(--border);border-radius:2px;margin:6px 6px 0}
+.track .fill{position:absolute;left:18%;right:22%;top:0;bottom:0;background:var(--accent);border-radius:2px}
+.track .h{position:absolute;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--surface);margin-left:-7px}
+.ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:8px;font-family:var(--mono)}
+.people label{display:flex;align-items:center;gap:8px;padding:5px 2px;cursor:pointer;font-size:13px}
+.people .dot{width:10px;height:10px;border-radius:50%}.people .n{margin-left:auto;color:var(--muted);font-family:var(--mono);font-size:11px}
+.people input{accent-color:var(--accent)}
+.reset{margin-top:20px;width:100%}
+main{padding:20px 28px;min-width:0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:8px;position:sticky;top:0;background:var(--bg);padding-top:4px;z-index:2}
+.tab{padding:8px 12px;color:var(--label);border-bottom:2px solid transparent}.tab.on{color:var(--accent);border-color:var(--accent)}
+.activechips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 18px;font-size:12px}
+.activechips span{background:rgba(var(--accent-rgb),.12);border:1px solid var(--accent);color:var(--accent);border-radius:99px;padding:2px 10px}
+h2{font-size:15px;margin:26px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.card b{display:block;font-size:22px;color:var(--accent)}.card small{color:var(--label)}
+.chart{height:150px;display:flex;align-items:flex-end;gap:3px}.chart i{flex:1;background:rgba(var(--accent-rgb),.5);border-radius:2px 2px 0 0}
+.fbtn{display:none}
+@media(max-width:800px){
+ .layout{display:block}
+ aside{position:fixed;inset:auto 0 0 0;height:auto;max-height:80vh;border:1px solid var(--border);border-radius:12px 12px 0 0;transform:translateY(105%);transition:.25s;z-index:5}
+ body.open aside{transform:none}
+ .fbtn{display:block;position:fixed;right:16px;bottom:16px;z-index:4;background:var(--accent);color:#000;border:0;border-radius:99px;padding:10px 16px;font-weight:600}
+ main{padding:14px 16px}
+}
+</style></head><body>
+<header>
+  <div><div class="app-name">Chat Analyzer</div><div class="chat-sub">Vinyl Club · 5 people · 41,203 messages</div></div>
+  <button class="btn" onclick="document.documentElement.classList.toggle('light')">☀ theme</button>
+</header>
+<div class="layout">
+<aside>
+  <div class="summary"><b>12,481 messages</b>412 days · 3 of 5 people</div>
+
+  <h3>Period</h3>
+  <div class="chips"><span class="chip on">All</span><span class="chip">12 mo</span><span class="chip">30 d</span><span class="chip">2023</span><span class="chip">2024</span><span class="chip">2025</span></div>
+  <div class="hist" id="hist"></div>
+  <div class="track"><div class="fill"></div><div class="h" style="left:18%"></div><div class="h" style="left:78%"></div></div>
+  <div class="ticks"><span>Jan 23</span><span>Jan 24</span><span>Jan 25</span></div>
+  <div class="dates"><div><label>From</label><input type="date" value="2023-04-12"></div><div><label>To</label><input type="date" value="2025-05-28"></div></div>
+
+  <h3>People</h3>
+  <div class="people">
+    <label><input type="checkbox" checked><span class="dot" style="background:#5FBF7A"></span>Ana<span class="n">5.2k</span></label>
+    <label><input type="checkbox" checked><span class="dot" style="background:#e0a24a"></span>Pepe<span class="n">4.1k</span></label>
+    <label><input type="checkbox" checked><span class="dot" style="background:#6aa5e8"></span>Jenni<span class="n">3.2k</span></label>
+    <label><input type="checkbox"><span class="dot" style="background:#c977c9"></span>Bia<span class="n">0.9k</span></label>
+    <label><input type="checkbox"><span class="dot" style="background:#e06c6c"></span>Caio<span class="n">0.4k</span></label>
+  </div>
+
+  <h3>Hour of day</h3>
+  <div class="track"><div class="fill" style="left:0;right:0"></div><div class="h" style="left:0"></div><div class="h" style="left:100%"></div></div>
+  <div class="ticks"><span>0h</span><span>12h</span><span>24h</span></div>
+
+  <button class="btn reset">Reset filters</button>
+</aside>
+<main>
+  <nav class="tabs"><span class="tab on">Overview</span><span class="tab">Activity</span><span class="tab">People</span><span class="tab">Messages</span><span class="tab">Wrapped</span></nav>
+  <div class="activechips"><span>Apr 12 2023 → May 28 2025 ✕</span><span>Ana, Pepe, Jenni ✕</span></div>
+  <h2>Overview</h2>
+  <div class="grid"><div class="card"><b>12,481</b><small>messages</small></div><div class="card"><b>30.3</b><small>per day</small></div><div class="card"><b>412</b><small>active days</small></div><div class="card"><b>2m 10s</b><small>median reply</small></div></div>
+  <h2>Activity</h2><div class="card"><div class="chart" id="chart"></div></div>
+  <h2>People</h2><div class="card" style="height:160px"></div>
+  <h2>Messages</h2><div class="card" style="height:160px"></div>
+  <h2>Wrapped</h2><div class="card" style="height:160px"></div>
+</main>
+</div>
+<button class="fbtn" onclick="document.body.classList.toggle('open')">Filters · 2</button>
+<script>
+const v=[30,44,38,52,60,48,70,90,66,40,35,58,80,95,72,50,45,62,55,38,30,42,68,85,60,44,36,28];
+hist.innerHTML=v.map((x,i)=>`<i class="${i>=5&&i<22?'in':''}" style="height:${x}%"></i>`).join('');
+chart.innerHTML=v.map(x=>`<i style="height:${x}%"></i>`).join('');
+</script>
+</body></html>

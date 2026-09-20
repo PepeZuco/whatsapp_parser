@@ -32,7 +32,7 @@
 }
 :root{--font:'Inter',system-ui,sans-serif;--font-mono:'Courier Prime',monospace;--radius:4px;--radius-sm:3px}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh;letter-spacing:-.01em;transition:background .2s,color .2s}
-.app{max-width:1200px;margin:0 auto;padding:0 24px 80px}
+.app{max-width:1360px;margin:0 auto;padding:0 24px 80px}
 @media(max-width:480px){.app{padding:0 16px 64px}}
 .hidden{display:none!important}
 
@@ -61,7 +61,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:28p
 .menu-list button{display:flex;width:100%;gap:8px;align-items:center;background:none;border:none;color:var(--text);font:13px var(--font);padding:8px 10px;cursor:pointer;border-radius:2px}
 .menu-list button:hover{background:var(--card-hover)}
 
-/* One page: the tab bar and the range strip form a single sticky header. Its
+/* One page: the tab bar is the sticky header and the range sidebar sticks beneath it. Its
    height is published as --sticky-h so a clicked section lands right below it. */
 .sticky{position:sticky;top:0;z-index:30;background:var(--bg);margin-bottom:8px;padding-bottom:10px;border-bottom:1px solid var(--border)}
 .nav-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-top:6px}
@@ -78,15 +78,39 @@ header{display:flex;align-items:center;justify-content:space-between;padding:28p
 .pane-h i{color:var(--accent);font-size:24px}
 .pane>section:empty{min-height:60vh}
 
-.datebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
-@media(max-width:640px){.datebar .lbl{display:none}.datebar .seg{flex-wrap:nowrap;max-width:100%;overflow-x:auto}.datebar .range-info{margin-left:0}}
-.datebar .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px;margin-right:4px}
-.datebar .lbl i{color:var(--accent);font-size:14px}
-.datebar input[type=date]{height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text);padding:0 8px;font:13px var(--font-mono);color-scheme:dark}
-[data-theme="light"] .datebar input[type=date]{color-scheme:light}
-.datebar .arrow{color:var(--muted)}
-.datebar .range-info{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
-.datebar .range-info b{color:var(--text);font-weight:600}
+.page{display:grid;grid-template-columns:248px minmax(0,1fr);gap:24px;align-items:start}
+.filters{position:sticky;top:calc(var(--sticky-h,0px) + 8px);max-height:calc(100vh - var(--sticky-h,0px) - 16px);overflow:auto;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.filters .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.filters .lbl i{color:var(--accent);font-size:14px}
+.filters .range-info{display:block;margin-bottom:12px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.filters .range-info b{color:var(--text);font-weight:600}
+.filters .seg{display:flex;flex-wrap:wrap}
+.filters .seg button{flex:1 0 auto}
+.hist{display:flex;align-items:flex-end;gap:1px;height:40px;margin-top:14px}
+.hist i{flex:1;min-height:1px;background:var(--cell0);border-radius:1px 1px 0 0}
+.hist i.in{background:rgba(var(--accent-rgb),.55)}
+.dual{position:relative;height:18px;margin-top:4px}
+.dual::before{content:"";position:absolute;left:0;right:0;top:7px;height:4px;border-radius:2px;background:var(--border)}
+.dual .fill{position:absolute;top:7px;height:4px;border-radius:2px;background:var(--accent)}
+.dual input[type=range]{position:absolute;left:0;top:0;width:100%;height:18px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
+.dual input[type=range]::-webkit-slider-runnable-track{background:none;height:18px}
+.dual input[type=range]::-moz-range-track{background:none}
+.dual input[type=range]::-webkit-slider-thumb{pointer-events:auto;-webkit-appearance:none;width:14px;height:14px;margin-top:2px;border-radius:50%;background:var(--accent);border:2px solid var(--surface);cursor:grab}
+.dual input[type=range]::-moz-range-thumb{pointer-events:auto;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--surface);cursor:grab}
+.dates{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+.dates label{font-size:11px;color:var(--muted)}
+.filters input[type=date]{width:100%;height:32px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text);padding:0 6px;font:12px var(--font-mono);color-scheme:dark}
+[data-theme="light"] .filters input[type=date]{color-scheme:light}
+.filters-fab{display:none}
+@media(max-width:900px){
+  .page{display:block}
+  .filters{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:80vh;z-index:40;border-radius:12px 12px 0 0;transform:translateY(105%);transition:transform .25s}
+  body.filters-open .filters{transform:none}
+  .filters-fab{display:flex;align-items:center;gap:8px;position:fixed;right:16px;bottom:16px;z-index:39;height:44px;padding:0 16px;border:none;border-radius:99px;background:var(--accent);color:#000;font:600 14px var(--font);cursor:pointer}
+  body.filters-open .filters-fab{display:none}
+  .filters .close{display:flex}
+}
+.filters .close{display:none;margin-left:auto;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
 .warn{color:var(--danger);font-size:12px;display:flex;align-items:center;gap:6px;width:100%}
 
 .sec{margin-bottom:28px}
@@ -415,20 +439,27 @@ select:focus,.search:focus-within{border-color:var(--accent)}
         <button class="nav-tab" data-tab="messages"><i class="ti ti-messages"></i><span data-i18n="tab_messages"></span></button>
         <button class="nav-tab" data-tab="wrapped"><i class="ti ti-gift"></i><span data-i18n="tab_wrapped"></span></button>
       </nav>
-      <div class="datebar" id="datebar">
-        <span class="lbl"><i class="ti ti-calendar"></i><span data-i18n="range"></span></span>
-        <span class="seg" id="presets"></span>
-        <input type="date" id="fromIn"><span class="arrow">→</span><input type="date" id="toIn">
-        <span class="range-info" id="rangeInfo"></span>
-        <div class="warn hidden" id="rangeWarn"><i class="ti ti-alert-triangle"></i><span data-i18n="date_conflict"></span></div>
-      </div>
     </div>
 
+    <div class="page">
+    <aside class="filters" id="filters">
+      <div class="lbl"><i class="ti ti-calendar"></i><span data-i18n="range"></span><button class="close" id="filtersClose" aria-label="Close"><i class="ti ti-x"></i></button></div>
+      <span class="range-info" id="rangeInfo"></span>
+      <span class="seg" id="presets"></span>
+      <div class="hist" id="hist"></div>
+      <div class="dual" id="dual"><span class="fill" id="dualFill"></span><input type="range" id="minR" aria-label="From"><input type="range" id="maxR" aria-label="To"></div>
+      <div class="dates"><div><label for="fromIn" data-i18n="from"></label><input type="date" id="fromIn"></div><div><label for="toIn" data-i18n="to"></label><input type="date" id="toIn"></div></div>
+      <div class="warn hidden" id="rangeWarn"><i class="ti ti-alert-triangle"></i><span data-i18n="date_conflict"></span></div>
+    </aside>
+    <div class="panes">
     <div class="pane" data-anchor="overview"><h2 class="pane-h"><i class="ti ti-layout-dashboard"></i><span data-i18n="tab_overview"></span></h2><section data-pane="overview"></section></div>
     <div class="pane" data-anchor="activity"><h2 class="pane-h"><i class="ti ti-chart-dots-3"></i><span data-i18n="tab_activity"></span></h2><section data-pane="activity"></section></div>
     <div class="pane" data-anchor="people"><h2 class="pane-h"><i class="ti ti-users"></i><span data-i18n="tab_people"></span></h2><section data-pane="people"></section></div>
     <div class="pane" data-anchor="messages"><h2 class="pane-h"><i class="ti ti-messages"></i><span data-i18n="tab_messages"></span></h2><section data-pane="messages"></section></div>
     <div class="pane" data-anchor="wrapped"><h2 class="pane-h"><i class="ti ti-gift"></i><span data-i18n="tab_wrapped"></span></h2><section data-pane="wrapped"></section></div>
+    </div>
+    </div>
+    <button class="filters-fab" id="filtersFab"><i class="ti ti-adjustments-horizontal"></i><span data-i18n="filters"></span></button>
   </div>
 </div>
 <div class="modal-back hidden" id="rosterBack">

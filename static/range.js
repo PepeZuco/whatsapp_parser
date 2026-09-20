@@ -74,6 +74,19 @@ const ChatRange = (function () {
     return { from: Math.max(first, from), to: Math.min(last, to) };
   }
 
+  /* Message counts in `n` equal slices of first..last, for the sidebar's
+   * sparkline. Also returns each slice's first day so a handle position maps
+   * back to a bucket without redoing the arithmetic. */
+  function histogram(msgs, first, last, n) {
+    const span = last - first + 1;
+    const counts = new Array(n).fill(0);
+    for (const m of msgs) {
+      if (m.day < first || m.day > last) continue;
+      counts[Math.min(n - 1, Math.floor((m.day - first) * n / span))]++;
+    }
+    return { counts, starts: counts.map((_, i) => first + Math.ceil(i * span / n)) };
+  }
+
   /* View state in the hash — tab, range, language — never anything from the chat. */
   function encodeHash(s) {
     const q = new URLSearchParams();
@@ -96,7 +109,7 @@ const ChatRange = (function () {
   }
 
   return { DAY, dayOf, isoOfDay, dayOfIso, yearOfDay, prepare, filter, presets, presetFor,
-           validate, encodeHash, decodeHash };
+           histogram, validate, encodeHash, decodeHash };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ChatRange;

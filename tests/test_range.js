@@ -48,3 +48,11 @@ test('hash round-trips view state and ignores junk', () => {
   assert.deepStrictEqual(R.decodeHash(R.encodeHash(s)), s);
   assert.deepStrictEqual(R.decodeHash('#from=yesterday&lang=fr'), {});
 });
+
+test('histogram buckets messages across the chat and ignores strays', () => {
+  const msgs = chat([['2024-01-01 10:00', 0], ['2024-01-01 11:00', 0], ['2024-01-10 10:00', 1]]);
+  const h = R.histogram(msgs, day('2024-01-01'), day('2024-01-10'), 2);
+  assert.deepStrictEqual(h.counts, [2, 1]);
+  assert.deepStrictEqual(h.starts, [day('2024-01-01'), day('2024-01-06')]);
+  assert.deepStrictEqual(R.histogram(msgs, day('2024-01-02'), day('2024-01-09'), 2).counts, [0, 0]);
+});

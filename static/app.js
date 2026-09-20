@@ -1,6 +1,6 @@
 'use strict';
 
-/* The shell: state, upload, tabs, date bar, theme, language and the URL hash.
+/* The shell: state, upload, tabs, range sidebar, theme, language and the URL hash.
  *
  * The page is one long scroll of five sections; the sticky tab bar scrolls to
  * them and highlights the one you are in. Each section is a view module
@@ -264,6 +264,37 @@ const App = (function (R, Roster) {
     $('rangeInfo').innerHTML = t('range_info', {
       days: `<b>${num(state.to - state.from + 1)}</b>`, msgs: `<b>${num(state.view.length)}</b>`,
     });
+    renderSlider();
+  }
+
+  // ---------- range slider ----------
+
+  const HIST_BUCKETS = 40;
+  let hist = null;   // { msgs, counts, starts } — rebuilt only when the projected chat changes
+
+  function renderSlider() {
+    if (!hist || hist.msgs !== state.msgs) {
+      hist = Object.assign({ msgs: state.msgs }, R.histogram(state.msgs, state.first, state.last, HIST_BUCKETS));
+    }
+    paintSlider(state.from, state.to);
+    const min = $('minR'), max = $('maxR');
+    for (const el of [min, max]) { el.min = state.first; el.max = state.last; }
+    min.value = state.from;
+    max.value = state.to;
+  }
+
+  /* Paint the sparkline, the filled track and the two date boxes for a range
+   * that may still be mid-drag; nothing else is redrawn until it is committed. */
+  function paintSlider(from, to) {
+    const top = Math.max(1, ...hist.counts);
+    const span = Math.max(1, state.last - state.first);
+    $('hist').innerHTML = hist.counts.map((c, i) =>
+      `<i class="${hist.starts[i] >= from && hist.starts[i] <= to ? 'in' : ''}" style="height:${Math.round(c / top * 100)}%"></i>`).join('');
+    const fill = $('dualFill');
+    fill.style.left = ((from - state.first) / span * 100) + '%';
+    fill.style.right = ((state.last - to) / span * 100) + '%';
+    $('fromIn').value = R.isoOfDay(from);
+    $('toIn').value = R.isoOfDay(to);
   }
 
   function setRange(from, to) {
@@ -401,6 +432,19 @@ const App = (function (R, Roster) {
       const p = state.presets.find(x => x.id === b.dataset.preset);
       setRange(p.from, p.to);
     });
+    const drag = () => {
+      let a = +$('minR').value, b = +$('maxR').value;
+      if (a > b) [a, b] = [b, a];
+      paintSlider(a, b);
+    };
+    const commit = () => {
+      const a = +$('minR').value, b = +$('maxR').value;
+      setRange(Math.min(a, b), Math.max(a, b));
+    };
+    for (const id of ['minR', 'maxR']) { $(id).addEventListener('input', drag); $(id).addEventListener('change', commit); }
+    const sheet = open => document.body.classList.toggle('filters-open', open);
+    $('filtersFab').addEventListener('click', () => sheet(true));
+    $('filtersClose').addEventListener('click', () => sheet(false));
     const onDate = () => setRange(R.dayOfIso($('fromIn').value), R.dayOfIso($('toIn').value));
     $('fromIn').addEventListener('change', onDate);
     $('toIn').addEventListener('change', onDate);
