@@ -352,3 +352,45 @@ modal on a two-person and a group export, drag merge, `⇄` merge, merge by
 keyboard only, split, colour change reflected on People / Activity / Wrapped /
 export, exclusion shrinking the date range, Esc cancelling, and reopening from
 the header.
+
+## Known follow-ups
+
+Triaged by the whole-branch review. None blocks merge; none is a correctness
+defect in what shipped.
+
+**Accessibility — one small commit, the weakest point in the feature.** The
+colour editor is effectively unusable by screen reader: a swatch's `aria-label` is
+a bare ordinal (`"1"`…`"12"`), conveying neither colour, selection nor taken
+state, and "taken" is signalled only by a `title` and `opacity:.45`. The duplicate
+banner has no `aria-live`, so a card disappearing after dismissal is silent. The
+merged-name `<input>` writes the draft without re-rendering, so the row's
+`aria-label`, the colour editor's heading and the `⇄` menu keep announcing the old
+name until the next interaction. All three are the same commit.
+
+**Performance — the one path that scales in two dimensions.** `kidCounts()` in
+`view-roster.js` walks every row once per merged group, on every render: measured
+at ~26 ms per render at 100k messages with 20 merged groups, inside a ~32 ms
+total click cost, so under budget. `counts()` already builds the per-source tally
+it needs and simply does not return it; exposing that makes `group()` O(src).
+
+**Defensive, not required.** `view-roster.js`'s `apply()` assigns
+`App.state.roster` before calling `App.applyRoster()`. The `.messages` guard makes
+`RosterError('empty')` unreachable on that path — it is exactly the predicate
+`Roster.apply` throws on, over the same chat/draft pair — so the ordering is
+provably safe today. Swapping the two lines would make it safe by construction
+rather than by argument.
+
+**Cosmetic.** `tests/test_roster.js`'s `process.env.TZ` line is a no-op (both
+`helpers.at()` and `isoOfTs` are timezone-independent) and implies a dependency
+that does not exist. `roster.js:150`'s `color = s % SLOTS` is the
+palette-exhausted fallback and wants a comment saying so, not a change. The
+`data-sugg` attribute is written and never read. `roster.js` now carries roster
+CRUD and duplicate heuristics in one 282-line module; split it if either half
+grows, not before.
+
+**Deliberate, recorded so it is not mistaken for a bug.** Pressing Analyse clears
+every tab's local state — Activity granularity, Wrapped period, Messages search
+and filters, Overview year — even when the roster is unchanged, while the date
+range is preserved. The roster row counts and footer are whole-chat while the
+colour preview is date-filtered, so a person with no messages in the selected
+range shows a full row count beside a 0% preview.
