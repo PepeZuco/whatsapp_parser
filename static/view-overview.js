@@ -185,7 +185,7 @@
     if (still || blocks.length < 2) return;
     // Hold until the people modal is confirmed/closed, then slide to older years.
     const go = () => { if (wrap.isConnected && local.scroll == null) glide(left(blocks.length - 1), 900 + 800 * blocks.length); };
-    if (typeof ChatRosterView !== 'undefined' && ChatRosterView.isOpen()) {
+    if (App.state.awaitingRoster || (typeof ChatRosterView !== 'undefined' && ChatRosterView.isOpen())) {
       document.addEventListener('roster:closed', go, { once: true });
     } else go();
   }

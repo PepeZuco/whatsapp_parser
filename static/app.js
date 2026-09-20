@@ -191,6 +191,7 @@ const App = (function (R, Roster) {
     $('appView').classList.remove('hidden');
     document.querySelectorAll('.chat-only').forEach(el => el.classList.remove('hidden'));
     watchPanes();
+    state.awaitingRoster = true;   // overview animation holds until the people modal closes
     state.tab = null;   // markActive below must fire even for the default section
     applyRoster();
     scrollToTab(TABS.includes(h.tab) ? h.tab : 'overview', true);

@@ -332,6 +332,7 @@ const ChatRosterView = (function (App, Roster) {
     const back = local.returnTo && local.returnTo.isConnected ? local.returnTo : $('rosterBtn');
     if (back) back.focus();
     local.returnTo = null;
+    App.state.awaitingRoster = false;
     document.dispatchEvent(new Event('roster:closed'));
   }
 
