@@ -6,7 +6,7 @@
 
   const TYPE_ICON = { t: 'ti-message', a: 'ti-microphone', p: 'ti-photo', s: 'ti-sticker', v: 'ti-video',
                       g: 'ti-gif', d: 'ti-file', m: 'ti-photo-video', x: 'ti-trash', l: 'ti-link' };
-  const local = { year: null, cloudPerson: null };
+  const local = { scroll: null, cloudPerson: null };
 
   function sparkline(values, color) {
     if (values.length < 2) return '';
@@ -55,28 +55,32 @@
     const { t, esc } = App;
     const years = [];
     for (let y = R.yearOfDay(st.from); y <= R.yearOfDay(st.to); y++) years.push(y);
-    if (!years.includes(local.year)) local.year = years[years.length - 1];
-    const cal = S.calendarYear(S.dailyCounts(st.view), local.year, st.from, st.to);
-    const cells = [];
-    for (let i = 0; i < cal.lead; i++) cells.push('<span class="c blank"></span>');
-    for (const c of cal.cells) {
-      const cls = `c${c.level ? ' l' + c.level : ''}${c.inRange ? '' : ' out'}`;
-      cells.push(`<button class="${cls}" data-day="${c.day}" data-n="${c.count}" aria-label="${R.isoOfDay(c.day)}"></button>`);
-    }
-    const months = [];
-    for (let m = 0; m < 12; m++) {
-      const d = R.dayOfIso(`${local.year}-${String(m + 1).padStart(2, '0')}-01`);
-      const col = Math.floor((d - cal.cells[0].day + cal.lead) / 7) + 1;
-      months.push(`<span style="grid-column:${col}/span 4">${esc(App.fmtDay(d, { month: 'short' }))}</span>`);
-    }
+    const daily = S.dailyCounts(st.view);
+    const blocks = years.map(y => {
+      const cal = S.calendarYear(daily, y, st.from, st.to);
+      const cells = [];
+      for (let i = 0; i < cal.lead; i++) cells.push('<span class="c blank"></span>');
+      for (const c of cal.cells) {
+        const cls = `c${c.level ? ' l' + c.level : ''}${c.inRange ? '' : ' out'}`;
+        cells.push(`<button class="${cls}" data-day="${c.day}" data-n="${c.count}" aria-label="${R.isoOfDay(c.day)}"></button>`);
+      }
+      const months = [];
+      for (let m = 0; m < 12; m++) {
+        const d = R.dayOfIso(`${y}-${String(m + 1).padStart(2, '0')}-01`);
+        const col = Math.floor((d - cal.cells[0].day + cal.lead) / 7) + 1;
+        months.push(`<span style="grid-column:${col}/span 4">${esc(App.fmtDay(d, { month: 'short' }))}</span>`);
+      }
+      return { th: cal.thresholds, html: `<div class="cal-year" data-y="${y}"><div class="cal-yl">${y}</div>
+        <div class="cal-months">${months.join('')}</div><div class="cal">${cells.join('')}</div></div>` };
+    });
     const wd = [0, 1, 2, 3, 4, 5, 6].map(i => `<span>${i % 2 ? esc(App.weekdayName(i)) : ''}</span>`).join('');
-    const th = cal.thresholds;
+    const th = blocks[0].th;
     return `<div class="sec">
       <div class="sec-h"><div class="t"><i class="ti ti-calendar-stats"></i>${esc(t('every_day'))}</div>
-        <div class="r"><span class="seg sm" id="calYears">${years.map(y => `<button data-year="${y}" class="${y === local.year ? 'on' : ''}">${y}</button>`).join('')}</span></div></div>
+        <div class="r"><span class="seg sm" id="calYears">${years.map(y => `<button data-year="${y}" class="${y === years[years.length - 1] ? 'on' : ''}">${y}</button>`).join('')}</span></div></div>
       <div class="panel">
-        <div class="cal-wrap"><div class="cal-row"><div class="cal-days">${wd}</div>
-          <div><div class="cal-months">${months.join('')}</div><div class="cal" id="cal">${cells.join('')}</div></div></div></div>
+        <div class="cal-row"><div class="cal-days">${wd}</div>
+          <div class="cal-wrap" id="calWrap"><div class="cal-strip" id="cal">${blocks.map(b => b.html).join('')}</div></div></div>
         <div class="legend"><span>${esc(t('cal_hint'))}</span><span class="sp"></span>${esc(t('less'))}
           <span class="c" style="background:var(--cell0)"></span>
           <span class="c" style="background:rgba(var(--accent-rgb),.25)" title="< ${th[0]}"></span>
@@ -139,6 +143,49 @@
       <div class="note"><i class="ti ti-pointer"></i>${esc(t('cloud_hint'))}</div></div></div>`;
   }
 
+  /* Horizontal year strip: opens on the newest year, eases back to the oldest
+   * (unless the user interferes); year buttons scroll a year's January to the
+   * left edge; the active button follows the scroll. */
+  function calendarScroll(root) {
+    const wrap = root.querySelector('#calWrap');
+    const btns = [...root.querySelectorAll('#calYears button')];
+    const blocks = [...wrap.querySelectorAll('.cal-year')];
+    const last = blocks[blocks.length - 1];
+    const pad = wrap.clientWidth - last.offsetWidth;
+    if (pad > 0) wrap.firstElementChild.style.paddingRight = pad + 'px';
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let raf = 0;
+    const stop = () => { cancelAnimationFrame(raf); raf = 0; };
+    const glide = (to, ms) => {
+      stop();
+      const from = wrap.scrollLeft, t0 = performance.now();
+      const step = now => {
+        const k = Math.min(1, (now - t0) / ms);
+        wrap.scrollLeft = from + (to - from) * (1 - Math.pow(1 - k, 3));
+        raf = k < 1 ? requestAnimationFrame(step) : 0;
+      };
+      raf = requestAnimationFrame(step);
+    };
+    const left = i => blocks[i].offsetLeft - blocks[0].offsetLeft;
+    const mark = () => {
+      let cur = 0;
+      blocks.forEach((b, i) => { if (left(i) <= wrap.scrollLeft + 8) cur = i; });
+      btns.forEach((b, i) => b.classList.toggle('on', i === cur));
+    };
+    wrap.addEventListener('scroll', () => { local.scroll = wrap.scrollLeft; mark(); });
+    ['wheel', 'pointerdown', 'touchstart'].forEach(ev => wrap.addEventListener(ev, stop, { passive: true }));
+    root.querySelector('#calYears').addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const i = btns.indexOf(b);
+      still ? (wrap.scrollLeft = left(i)) : glide(left(i), 600);
+    });
+    if (local.scroll != null) { wrap.scrollLeft = local.scroll; mark(); return; }
+    wrap.scrollLeft = left(blocks.length - 1);
+    mark();
+    if (!still && blocks.length > 1) glide(0, 400 + 500 * blocks.length);
+  }
+
   function render(root) {
     const st = App.state;
     if (!st.view.length) return App.emptyState(root);
@@ -147,10 +194,7 @@
 
     root.querySelectorAll('[data-open-day]').forEach(b =>
       b.addEventListener('click', () => App.openMessages({ day: +b.dataset.openDay })));
-    root.querySelector('#calYears').addEventListener('click', e => {
-      const b = e.target.closest('button');
-      if (b) { local.year = +b.dataset.year; render(root); }
-    });
+    calendarScroll(root);
     const cal = root.querySelector('#cal');
     cal.addEventListener('mousemove', e => {
       const c = e.target.closest('[data-day]');
@@ -177,5 +221,5 @@
     });
   }
 
-  App.register('overview', { render, reset() { local.year = null; local.cloudPerson = null; } });
+  App.register('overview', { render, reset() { local.scroll = null; local.cloudPerson = null; } });
 })(App, ChatStats, ChatWords, ChatRange);
