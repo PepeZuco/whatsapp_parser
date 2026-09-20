@@ -164,7 +164,15 @@ suggested only when **all three** hold:
      name's words are a subset of the other's — `Ana` ⊂ `Ana Souza`;
    - normalised Levenshtein similarity ≥ `0.85`.
 3. **Near-disjoint activity.** With each person's span running first message day
-   → last message day, `overlapDays / unionDays <= 0.05`.
+   → last message day, `overlapDays / min(spanA, spanB) <= 0.05`.
+
+   The denominator is the **shorter** span, not the union. Measured against the
+   union, anyone with a long tenure looks disjoint from anyone short-lived: in a
+   chat where Ana writes across eighteen months and a new number appears for two
+   days at the end, their two days of overlap are under 1% of the union, so Ana
+   and the number would be offered as the same person. Against the shorter span
+   those same two days are 100% overlap, and only a number that appears *after*
+   its predecessor goes quiet survives the test.
 
 `reasons` are keys (`no_replies`, `phone_number`, `similar_name`,
 `span_disjoint`) rendered through i18n, so the banner can explain itself. People
@@ -304,6 +312,9 @@ one language and missing from the other.
 - flags `Ana` / `Ana Souza`
 - silent when the two reply to each other inside 12 h
 - silent when the spans overlap
+- silent for a long-tenured person against a short-lived number that overlaps
+  them — the case the union-based ratio would have got wrong
+- tells nothing from two similar-looking phone numbers
 - silent for two plainly different names
 - accent- and case-insensitive (`José` / `jose`)
 - never returns more than 3 pairs
