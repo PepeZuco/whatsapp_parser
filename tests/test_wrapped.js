@@ -59,3 +59,13 @@ test('an empty period is all zeros and nulls, not a crash', () => {
   const m = Wr.model(sample(), ['A', 'B'], '2030');
   assert.deepStrictEqual([m.total, m.streak, m.busiest, m.peakHour, m.topEmoji, m.fastest], [0, 0, null, null, null, null]);
 });
+
+test('no person colour is the app accent, so a green never reads as a participant', () => {
+  const fs = require('node:fs');
+  const html = fs.readFileSync(require('node:path').join(__dirname, '../templates/index.html'), 'utf8');
+  const accents = [...html.matchAll(/--accent:(#[0-9a-fA-F]{6})/g)].map(m => m[1].toLowerCase());
+  const people = [...html.matchAll(/--p\d+:(#[0-9a-fA-F]{6})/g)].map(m => m[1].toLowerCase());
+  assert.strictEqual(accents.length, 2);
+  for (const a of accents) assert.ok(!people.includes(a), `${a} is a person colour`);
+  assert.ok(!Wr.PALETTE.people.map(c => c.toLowerCase()).includes(Wr.PALETTE.accent.toLowerCase()));
+});
