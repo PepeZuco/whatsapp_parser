@@ -11,8 +11,13 @@
 
 const ChatWrapped = (function (R, S, P, W) {
 
+  // The card is always dark — it is a shareable image, not a themed page — so
+  // these are the dark-theme person colours, one per palette slot, inlined
+  // because a canvas cannot read CSS custom properties.
   const PALETTE = { bg: '#0a0a0a', text: '#e8e8e0', muted: '#9a9a92', faint: '#555', accent: '#5FBF7A',
-                    border: '#3A2C1D', people: ['#5FBF7A', '#F5C518', '#4AA3C4', '#9B7FD4', '#E05A5A', '#D4608A'] };
+                    border: '#3A2C1D',
+                    people: ['#5FBF7A', '#F5C518', '#4AA3C4', '#9B7FD4', '#E05A5A', '#D4608A',
+                             '#E08A45', '#46C9B0', '#A8C24A', '#7E8FE0', '#B8865F', '#5FD2E0'] };
   const MIN_REPLIES = 5;
 
   function periods(first, last) {

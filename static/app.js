@@ -60,12 +60,33 @@ const App = (function (R) {
     return m ? `${h} h ${m}` : `${h} h`;
   }
 
-  function color(p) { return p < 0 ? 'var(--muted)' : `var(--p${(p % 6) + 1})`; }
+  const SLOTS = 12;
+
+  /* A palette slot (0-11) → its CSS variable. The one place a slot becomes a
+   * colour; everything else goes through here or through color(p). */
+  function slotVar(slot) { return `--p${((slot % SLOTS) + SLOTS) % SLOTS + 1}`; }
+
+  function slotColor(slot) { return `var(${slotVar(slot)})`; }
+
+  function slotColorValue(slot) { return cssValue(slotVar(slot)); }
+
+  function cssValue(v) {
+    return getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  }
+
+  /* p indexes the PROJECTED chat (state.chat.people), so its colour comes from
+   * the roster's slot for that person. The modal lists excluded people too, who
+   * have no projected index — it uses slotColor(entry.color) directly instead. */
+  function slotOf(p) {
+    const c = state.chat && state.chat.colors;
+    return c && c[p] != null ? c[p] : p % SLOTS;
+  }
+
+  function color(p) { return p < 0 ? 'var(--muted)' : slotColor(slotOf(p)); }
 
   /* The resolved colour, for canvas and inline SVG fills. */
   function colorValue(p) {
-    const v = p < 0 ? '--muted' : `--p${(p % 6) + 1}`;
-    return getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+    return p < 0 ? cssValue('--muted') : slotColorValue(slotOf(p));
   }
 
   function name(p) { return p < 0 ? t('others') : state.chat.people[p]; }
@@ -314,7 +335,7 @@ const App = (function (R) {
     });
   }
 
-  return { state, t, esc, num, pct, fmtDay, fmtTime, weekdayName, fmtDuration, color, colorValue, name,
+  return { state, t, esc, num, pct, fmtDay, fmtTime, weekdayName, fmtDuration, color, colorValue, slotColor, slotColorValue, name,
            showTip, hideTip, emptyState, register, openMessages, setRange, boot, load };
 })(typeof ChatRange !== 'undefined' ? ChatRange : require('./range.js'));
 
