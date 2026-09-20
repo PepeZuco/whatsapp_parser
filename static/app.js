@@ -191,6 +191,7 @@ const App = (function (R, Roster) {
     document.querySelectorAll('.chat-only').forEach(el => el.classList.remove('hidden'));
     applyRoster();
     showTab(state.tab);
+    if (typeof ChatRosterView !== 'undefined') { ChatRosterView.newChat(); ChatRosterView.open(); }
   }
 
   /* Project the raw chat through the current roster and rebuild everything that
@@ -322,6 +323,10 @@ const App = (function (R, Roster) {
     $('themeBtn').addEventListener('click', () =>
       setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
     $('newChatBtn').addEventListener('click', unload);
+    $('rosterBtn').addEventListener('click', () => ChatRosterView.open());
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && typeof ChatRosterView !== 'undefined' && ChatRosterView.isOpen()) ChatRosterView.close();
+    });
 
     const drop = $('dropzone'), input = $('fileInput');
     drop.addEventListener('click', () => input.click());
