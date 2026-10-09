@@ -129,6 +129,11 @@ const App = (function (R, Roster) {
     if (state.chat) { renderDatebar(); invalidate(); writeHash(); }
   }
 
+  /* Umami custom event; a no-op without the tracker (see static/analytics.js). */
+  function track(name, data) {
+    if (typeof ChatAnalytics !== 'undefined') ChatAnalytics.track(name, data);
+  }
+
   function storage(key, value) {
     try {
       if (value === undefined) return localStorage.getItem(key);
@@ -167,9 +172,16 @@ const App = (function (R, Roster) {
       const res = await fetch('/api/parse', { method: 'POST', body });
       let json = null;
       try { json = await res.json(); } catch (e) { /* non-JSON error page */ }
-      if (!res.ok) { showError((json && json.error) || (res.status === 413 ? 'too_large' : 'internal')); return; }
+      if (!res.ok) {
+        const code = (json && json.error) || (res.status === 413 ? 'too_large' : 'internal');
+        track('parse-error', { code });
+        showError(code);
+        return;
+      }
+      if (typeof ChatAnalytics !== 'undefined') track('chat-load', ChatAnalytics.chatSummary(json, file.name));
       load(json);
     } catch (e) {
+      track('parse-error', { code: 'network' });
       showError('network');
     } finally {
       drop.classList.remove('busy');
@@ -404,11 +416,14 @@ const App = (function (R, Roster) {
     applyI18n();
     renderHeader();
 
-    $('langSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setLang(b.dataset.lang); });
-    $('themeBtn').addEventListener('click', () =>
-      setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
-    $('newChatBtn').addEventListener('click', unload);
-    $('rosterBtn').addEventListener('click', () => ChatRosterView.open());
+    $('langSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { setLang(b.dataset.lang); track('lang', { lang: b.dataset.lang }); } });
+    $('themeBtn').addEventListener('click', () => {
+      const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      setTheme(theme);
+      track('theme', { theme });
+    });
+    $('newChatBtn').addEventListener('click', () => { track('new-chat'); unload(); });
+    $('rosterBtn').addEventListener('click', () => { track('roster-open'); ChatRosterView.open(); });
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && typeof ChatRosterView !== 'undefined' && ChatRosterView.isOpen()) ChatRosterView.close();
     });
@@ -425,12 +440,13 @@ const App = (function (R, Roster) {
       upload(e.dataTransfer.files[0]);
     });
 
-    $('tabs').addEventListener('click', e => { const b = e.target.closest('.nav-tab'); if (b) scrollToTab(b.dataset.tab); });
+    $('tabs').addEventListener('click', e => { const b = e.target.closest('.nav-tab'); if (b) { scrollToTab(b.dataset.tab); track('tab', { tab: b.dataset.tab }); } });
     $('presets').addEventListener('click', e => {
       const b = e.target.closest('button');
       if (!b) return;
       const p = state.presets.find(x => x.id === b.dataset.preset);
       setRange(p.from, p.to);
+      track('range', { via: 'preset', preset: p.id });
     });
     const drag = () => {
       let a = +$('minR').value, b = +$('maxR').value;
@@ -440,6 +456,7 @@ const App = (function (R, Roster) {
     const commit = () => {
       const a = +$('minR').value, b = +$('maxR').value;
       setRange(Math.min(a, b), Math.max(a, b));
+      track('range', { via: 'slider' });
     };
     for (const id of ['minR', 'maxR']) { $(id).addEventListener('input', drag); $(id).addEventListener('change', commit); }
     const sheet = open => document.body.classList.toggle('filters-open', open);
@@ -453,7 +470,10 @@ const App = (function (R, Roster) {
     };
     $('filtersCollapse').addEventListener('click', () => collapse(!document.body.classList.contains('filters-collapsed')));
     try { if (localStorage.getItem('filtersCollapsed')) collapse(true); } catch (e) {}
-    const onDate = () => setRange(R.dayOfIso($('fromIn').value), R.dayOfIso($('toIn').value));
+    const onDate = () => {
+      setRange(R.dayOfIso($('fromIn').value), R.dayOfIso($('toIn').value));
+      track('range', { via: 'date' });
+    };
     $('fromIn').addEventListener('change', onDate);
     $('toIn').addEventListener('change', onDate);
 
@@ -461,15 +481,17 @@ const App = (function (R, Roster) {
     document.addEventListener('click', () => $('exportMenu').classList.add('hidden'));
     $('exportMenu').addEventListener('click', e => {
       const b = e.target.closest('[data-export]');
-      if (b) ChatExport.download(b.dataset.export, state.view, {
+      if (!b) return;
+      ChatExport.download(b.dataset.export, state.view, {
         names: state.chat.people, typeLabel: k => t('type_' + k), weekdayLabel: wd => weekdayName(wd, 'long'),
         headers: ['col_time', 'col_sender', 'col_message', 'col_type', 'col_weekday'].map(k => t(k)),
       });
+      track('export', { format: b.dataset.export });
     });
   }
 
   return { state, t, esc, num, pct, fmtDay, fmtTime, weekdayName, fmtDuration, color, colorValue, slotColor, slotColorValue, name,
-           showTip, hideTip, emptyState, register, openMessages, setRange, boot, load, applyRoster };
+           showTip, hideTip, emptyState, track, register, openMessages, setRange, boot, load, applyRoster };
 })(typeof ChatRange !== 'undefined' ? ChatRange : require('./range.js'),
    typeof ChatRoster !== 'undefined' ? ChatRoster : require('./roster.js'));
 

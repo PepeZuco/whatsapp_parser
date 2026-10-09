@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Chat Analyzer</title>
 <link rel="icon" type="image/svg+xml" href="/static/chat-icon.svg">
+{% if umami_website_id %}
+<!-- Cookieless visit counts (Umami). Only rendered when UMAMI_WEBSITE_ID is
+     set, so local runs never report. The hash is app state, not a page. -->
+<script defer src="{{ umami_script_url }}" data-website-id="{{ umami_website_id }}" data-exclude-hash="true"></script>
+{% endif %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.6.0/dist/tabler-icons.min.css">
@@ -479,6 +484,7 @@ select:focus,.search:focus-within{border-color:var(--accent)}
 </div>
 <div class="tip hidden" id="tip"></div>
 
+<script src="/static/analytics.js"></script>
 <script src="/static/range.js"></script>
 <script src="/static/stats.js"></script>
 <script src="/static/people.js"></script>

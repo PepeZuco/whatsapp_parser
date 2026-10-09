@@ -85,7 +85,9 @@
     root.querySelector('#wFmt').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { local.fmt = b.dataset.v; render(root); } });
     root.querySelector('#wHide').addEventListener('change', e => { local.hideNames = e.target.checked; redraw(); });
     root.querySelector('#wWord').addEventListener('change', e => { local.showTopWord = e.target.checked; redraw(); });
+    const shared = () => ({ period: local.period, format: local.fmt, hide_names: local.hideNames, top_word: local.showTopWord });
     root.querySelector('#wDownload').addEventListener('click', () => canvas.toBlob(blob => {
+      App.track('wrapped-download', shared());
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `chat-wrapped-${local.period}.png`;
@@ -96,6 +98,7 @@
     if (copy) copy.addEventListener('click', () => canvas.toBlob(async blob => {
       try {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        App.track('wrapped-copy', shared());
         copy.innerHTML = `<i class="ti ti-check"></i>${esc(t('w_copied'))}`;
       } catch (e) {
         copy.innerHTML = `<i class="ti ti-x"></i>${esc(t('w_copy_failed'))}`;

@@ -287,6 +287,7 @@ const ChatRosterView = (function (App, Roster) {
     const draft = local.draft;
     App.state.roster = draft;
     App.applyRoster();
+    App.track('roster-apply');
     close();
   }
 

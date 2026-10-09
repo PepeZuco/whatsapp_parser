@@ -19,7 +19,11 @@ log = logging.getLogger(__name__)
 
 @app.get('/')
 def index():
-    return render_template('index.html')
+    return render_template(
+        'index.html',
+        umami_website_id=os.environ.get('UMAMI_WEBSITE_ID', ''),
+        umami_script_url=os.environ.get('UMAMI_SCRIPT_URL') or 'https://cloud.umami.is/script.js',
+    )
 
 
 @app.get('/healthz')
